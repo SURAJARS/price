@@ -1,15 +1,20 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/stores/authStore";
+import Navigation from "@/components/Navigation";
 import Link from "next/link";
 
 export default function AdminDashboardPage() {
   const router = useRouter();
   const { user, isAuthenticated } = useAuthStore();
-
+  const [mounted, setMounted] = useState(false);
   // Redirect if not authenticated or not owner
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   useEffect(() => {
     if (!isAuthenticated || !user) {
       router.push("/login");
@@ -20,6 +25,10 @@ export default function AdminDashboardPage() {
       router.push("/staff/search");
     }
   }, [isAuthenticated, user, router]);
+
+  if (!mounted) {
+    return null;
+  }
 
   if (!isAuthenticated || !user) {
     return null;
@@ -40,13 +49,7 @@ export default function AdminDashboardPage() {
       href: "/admin/products",
       color: "bg-green-50 border-green-200 hover:bg-green-100",
     },
-    {
-      title: "Pricing",
-      description: "Manage prices and price history",
-      icon: "💰",
-      href: "/admin/products",
-      color: "bg-purple-50 border-purple-200 hover:bg-purple-100",
-    },
+
     {
       title: "Staff",
       description: "Manage staff accounts and access",
@@ -72,48 +75,13 @@ export default function AdminDashboardPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">
-              Admin Dashboard
-            </h1>
-            <p className="text-gray-600 mt-1">Welcome, {user.name}</p>
-          </div>
-          <button
-            onClick={() => {
-              useAuthStore.setState({ user: null, token: null });
-              localStorage.removeItem("token");
-              localStorage.removeItem("user");
-              router.push("/login");
-            }}
-            className="text-sm text-gray-600 hover:text-gray-900"
-          >
-            Logout
-          </button>
-        </div>
-      </header>
+      <Navigation />
 
-      {/* Navigation Tabs */}
-      <div className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <nav className="flex space-x-8" aria-label="Tabs">
-            {[
-              { id: "overview", label: "Overview", icon: "📊" },
-              { id: "products", label: "Products", icon: "📦" },
-              { id: "pricing", label: "Pricing", icon: "💰" },
-              { id: "staff", label: "Staff", icon: "👥" },
-              { id: "settings", label: "Settings", icon: "⚙️" },
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                className={`py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300`}
-              >
-                {tab.icon} {tab.label}
-              </button>
-            ))}
-          </nav>
+      {/* Page Title */}
+      <div className="bg-white shadow-sm border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
+          <p className="text-gray-600 mt-1">Welcome, {user.name}</p>
         </div>
       </div>
 

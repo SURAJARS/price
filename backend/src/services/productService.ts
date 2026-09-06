@@ -6,39 +6,52 @@ import { notifyPriceUpdate } from "../config/socket";
 
 export class ProductService {
   // Search products (for staff)
-  static async searchProducts(query: string, limit: number = 20) {
-    try {
-      const products = await Product.find(
-        {
-          $text: { $search: query },
-          isActive: true,
-        },
-        { score: { $meta: "textScore" } }
-      )
-        .sort({ score: { $meta: "textScore" } })
-        .limit(limit)
-        .lean();
+ static async searchProducts(query: string, limit: number = 20) {
+  try {
+    const searchTerm = query.trim();
 
-      // Enrich with variants
-      const enrichedProducts = await Promise.all(
-        products.map(async (product: any) => {
-          const variants = await ProductVariant.find(
-            { productId: product._id, isActive: true },
-            { purchaseCost: 0 } // Hide purchase cost from staff
-          );
-
-          return {
-            ...product,
-            variants,
-          };
-        })
-      );
-
-      return enrichedProducts;
-    } catch (error) {
-      throw error;
+    if (!searchTerm) {
+      return [];
     }
+
+    // Escape regex special characters so user input is treated as plain text
+    const escapedQuery = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+    // Case-insensitive partial search across product name,
+    // Tamil name, SKU and brand.
+    const products = await Product.find({
+      isActive: true,
+      $or: [
+        { englishName: { $regex: escapedQuery, $options: "i" } },
+        { tamilName: { $regex: escapedQuery, $options: "i" } },
+        { sku: { $regex: escapedQuery, $options: "i" } },
+        { brand: { $regex: escapedQuery, $options: "i" } },
+      ],
+    })
+      .sort({ englishName: 1 })
+      .limit(limit)
+      .lean();
+
+    // Enrich with active variants
+    const enrichedProducts = await Promise.all(
+      products.map(async (product: any) => {
+        const variants = await ProductVariant.find(
+          { productId: product._id, isActive: true },
+          { purchaseCost: 0 }
+        ).lean();
+
+        return {
+          ...product,
+          variants,
+        };
+      })
+    );
+
+    return enrichedProducts;
+  } catch (error) {
+    throw error;
   }
+}
 
   // Get product by ID with variants
   static async getProductDetails(productId: string, isAdmin: boolean = false) {

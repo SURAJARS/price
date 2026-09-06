@@ -50,13 +50,20 @@ const getStoredAuth = () => {
 
 const storedAuth = getStoredAuth();
 
-export const useAuthStore = create<AuthStore>((set, get) => ({
+export const useAuthStore = create<AuthStore>((set) => ({
   user: storedAuth.user,
   token: storedAuth.token,
   isLoading: false,
   error: null,
 
-  setUser: (user) => set({ user }),
+  isAuthenticated: !!storedAuth.user,
+  isOwner: storedAuth.user?.role === UserRole.OWNER,
+  isStaff: storedAuth.user?.role === UserRole.STAFF,
+
+  setUser: (user) => set({ user,
+    isAuthenticated: !!user,
+    isOwner: user?.role === UserRole.OWNER,
+    isStaff: user?.role === UserRole.STAFF, }),
 
   setToken: (token) => set({ token }),
 
@@ -68,23 +75,14 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     set({
       user: null,
       token: null,
+      isAuthenticated: false,
+    isOwner: false,
+    isStaff: false,
     });
 
     if (typeof window !== "undefined") {
       localStorage.removeItem("token");
       localStorage.removeItem("user");
     }
-  },
-
-  get isAuthenticated() {
-    return get().user !== null;
-  },
-
-  get isOwner() {
-    return get().user?.role === UserRole.OWNER;
-  },
-
-  get isStaff() {
-    return get().user?.role === UserRole.STAFF;
   },
 }));

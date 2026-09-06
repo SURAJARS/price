@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/stores/authStore";
+import Navigation from "@/components/Navigation";
 import { useProductStore } from "@/stores/productStore";
 import { apiClient } from "@/services/apiClient";
 import {
@@ -28,6 +29,15 @@ export default function StaffSearchPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
+  // Autocomplete state
+  const [suggestions, setSuggestions] = useState<Product[]>([]);
+  const [isAutocompleteOpen, setIsAutocompleteOpen] = useState(false);
+  const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(-1);
+  const [isAutocompleteLoading, setIsAutocompleteLoading] = useState(false);
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const requestIdRef = useRef<number>(0);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
   // Redirect if not authenticated
   useEffect(() => {
     if (!isAuthenticated || !user) {
@@ -48,6 +58,124 @@ export default function StaffSearchPage() {
       offPriceUpdate();
     };
   }, [isAuthenticated, user, router, updatePrice]);
+
+  // Handle click outside autocomplete dropdown
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsAutocompleteOpen(false);
+      }
+    };
+
+    if (isAutocompleteOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => {
+        document.removeEventListener("mousedown", handleClickOutside);
+      };
+    }
+  }, [isAutocompleteOpen]);
+
+  // Debounced autocomplete search
+  const performAutocompleteSearch = useCallback(
+    async (query: string, currentRequestId: number) => {
+      try {
+        setIsAutocompleteLoading(true);
+        const response = await apiClient.searchProducts(query, 10);
+
+        // Ignore if this is a stale request
+        if (currentRequestId !== requestIdRef.current) {
+          return;
+        }
+
+        if (response.success && response.data) {
+          setSuggestions(response.data);
+          setIsAutocompleteOpen(true);
+          setSelectedSuggestionIndex(-1);
+        } else {
+          setSuggestions([]);
+        }
+      } catch (err: any) {
+        // Ignore errors for autocomplete
+        if (currentRequestId === requestIdRef.current) {
+          setSuggestions([]);
+        }
+      } finally {
+        setIsAutocompleteLoading(false);
+      }
+    },
+    [],
+  );
+
+  // Handle input change with debounce
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSearchQuery(value);
+    setSelectedSuggestionIndex(-1);
+
+    // Clear previous timeout
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+
+    if (value.trim().length < 2) {
+      setIsAutocompleteOpen(false);
+      setSuggestions([]);
+      return;
+    }
+
+    // Set new timeout for debounced search
+    const currentRequestId = ++requestIdRef.current;
+    debounceTimerRef.current = setTimeout(() => {
+      performAutocompleteSearch(value, currentRequestId);
+    }, 300);
+  };
+
+  // Handle keyboard navigation in autocomplete
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!isAutocompleteOpen || suggestions.length === 0) {
+      if (e.key === "Enter") {
+        handleSearch(e as any);
+      }
+      return;
+    }
+
+    switch (e.key) {
+      case "ArrowDown":
+        e.preventDefault();
+        setSelectedSuggestionIndex((prev) =>
+          prev < suggestions.length - 1 ? prev + 1 : prev,
+        );
+        break;
+      case "ArrowUp":
+        e.preventDefault();
+        setSelectedSuggestionIndex((prev) => (prev > 0 ? prev - 1 : -1));
+        break;
+      case "Enter":
+        e.preventDefault();
+        if (selectedSuggestionIndex >= 0) {
+          handleSelectSuggestion(suggestions[selectedSuggestionIndex]);
+        } else {
+          handleSearch(e as any);
+        }
+        break;
+      case "Escape":
+        e.preventDefault();
+        setIsAutocompleteOpen(false);
+        break;
+    }
+  };
+
+  // Handle suggestion selection
+  const handleSelectSuggestion = (product: Product) => {
+    setSelectedProduct(product);
+    setIsAutocompleteOpen(false);
+    setSearchQuery("");
+    setSuggestions([]);
+    setSelectedSuggestionIndex(-1);
+  };
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -98,47 +226,116 @@ export default function StaffSearchPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-gray-900">Price Lookup</h1>
-          <button
-            onClick={() => {
-              useAuthStore.setState({ user: null, token: null });
-              localStorage.removeItem("token");
-              localStorage.removeItem("user");
-              router.push("/login");
-            }}
-            className="text-sm text-gray-600 hover:text-gray-900"
-          >
-            Logout
-          </button>
-        </div>
-      </header>
+      <Navigation />
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Search Section */}
         <div className="mb-8">
-          <form onSubmit={handleSearch} className="space-y-4">
-            <div className="flex gap-2">
-              <input
-                type="text"
-                placeholder="Search product name, Tamil name, SKU, or brand..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                disabled={isLoading}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
-              >
-                {isLoading ? "Searching..." : "Search"}
-              </button>
-            </div>
-          </form>
+          <div className="relative" ref={dropdownRef}>
+            <form onSubmit={handleSearch} className="space-y-4">
+              <div className="flex gap-2">
+                <div className="flex-1 relative">
+                  <input
+                    type="text"
+                    placeholder="Search product name, Tamil name, SKU, or brand..."
+                    value={searchQuery}
+                    onChange={handleInputChange}
+                    onKeyDown={handleKeyDown}
+                    onFocus={() => {
+                      if (suggestions.length > 0) {
+                        setIsAutocompleteOpen(true);
+                      }
+                    }}
+                    disabled={isLoading}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder-gray-400"
+                  />
+
+                  {/* Autocomplete Dropdown */}
+                  {isAutocompleteOpen && suggestions.length > 0 && (
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded-md shadow-lg z-50 max-h-96 overflow-y-auto">
+                      {isAutocompleteLoading && (
+                        <div className="p-3 text-center text-sm text-gray-500">
+                          Loading...
+                        </div>
+                      )}
+                      {!isAutocompleteLoading && suggestions.length === 0 && (
+                        <div className="p-3 text-center text-sm text-gray-500">
+                          No products found
+                        </div>
+                      )}
+                      {!isAutocompleteLoading &&
+                        suggestions.map((product, index) => (
+                          <div
+                            key={product._id}
+                            onClick={() => handleSelectSuggestion(product)}
+                            className={`p-3 cursor-pointer border-b border-gray-100 transition ${
+                              index === selectedSuggestionIndex
+                                ? "bg-blue-50"
+                                : "hover:bg-gray-50"
+                            }`}
+                          >
+                            <div className="flex gap-3 items-start">
+                              {product.image && (
+                                <img
+                                  src={product.image}
+                                  alt={product.englishName}
+                                  className="w-10 h-10 object-cover rounded flex-shrink-0"
+                                />
+                              )}
+                              <div className="flex-1 min-w-0">
+                                <p className="font-semibold text-gray-900 text-sm truncate">
+                                  {product.englishName}
+                                </p>
+                                {product.tamilName && (
+                                  <p className="text-xs text-gray-600 truncate">
+                                    {product.tamilName}
+                                  </p>
+                                )}
+                                <div className="flex gap-2 mt-1 flex-wrap">
+                                  {product.category && (
+                                    <span className="text-xs bg-gray-100 text-gray-700 px-2 py-0.5 rounded">
+                                      {product.category.name}
+                                    </span>
+                                  )}
+                                  {product.variants &&
+                                    product.variants.length > 0 && (
+                                      <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">
+                                        {product.variants.length} size
+                                        {product.variants.length !== 1
+                                          ? "s"
+                                          : ""}
+                                      </span>
+                                    )}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  )}
+
+                  {/* No results message */}
+                  {isAutocompleteOpen &&
+                    suggestions.length === 0 &&
+                    !isAutocompleteLoading &&
+                    searchQuery.trim().length >= 2 && (
+                      <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded-md shadow-lg z-50 p-3 text-center text-sm text-gray-500">
+                        No products found
+                      </div>
+                    )}
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 whitespace-nowrap"
+                >
+                  {isLoading ? "Searching..." : "Search"}
+                </button>
+              </div>
+            </form>
+          </div>
 
           {/* Microphone Button Placeholder */}
           <div className="mt-4 text-center text-sm text-gray-600">
@@ -190,7 +387,9 @@ export default function StaffSearchPage() {
               {selectedProduct.sku && (
                 <div>
                   <p className="text-sm text-gray-600">SKU</p>
-                  <p className="font-medium">{selectedProduct.sku}</p>
+                  <p className="font-medium text-gray-900">
+                    {selectedProduct.sku}
+                  </p>
                 </div>
               )}
             </div>
