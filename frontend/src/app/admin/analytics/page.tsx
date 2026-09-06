@@ -3,11 +3,14 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/stores/authStore";
+import { useLanguageStore } from "@/stores/languageStore";
+import { t } from "@/lib/translations";
 import Navigation from "@/components/Navigation";
 
 export default function AnalyticsPage() {
   const router = useRouter();
   const { isAuthenticated, isOwner } = useAuthStore();
+  const { language } = useLanguageStore();
 
   useEffect(() => {
     if (!isAuthenticated || !isOwner) {
@@ -15,55 +18,68 @@ export default function AnalyticsPage() {
     }
   }, [isAuthenticated, isOwner, router]);
 
+  const features = [
+    "analytics.frequentlySearched",
+    "analytics.noResultSearches",
+    "analytics.priceChangeFrequency",
+    "analytics.pricesTrends",
+    "analytics.marginAnalysis",
+    "analytics.productPerformance",
+  ];
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-950">
       <Navigation />
       <div className="p-4 md:p-6">
-        <div className="max-w-7xl mx-auto">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-            Analytics
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400 mb-8">
-            Track trends and performance metrics
-          </p>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            {[
-              { label: "Total Products", value: "-", icon: "📦" },
-              { label: "Active Variants", value: "-", icon: "📊" },
-              { label: "Price Changes (30d)", value: "-", icon: "💹" },
-              { label: "Search Volume", value: "-", icon: "🔍" },
-            ].map((card, i) => (
-              <div
-                key={i}
-                className="bg-white dark:bg-slate-800 rounded-lg shadow p-6"
-              >
-                <div className="text-2xl mb-2">{card.icon}</div>
-                <p className="text-gray-600 dark:text-gray-400 text-sm">
-                  {card.label}
-                </p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {card.value}
-                </p>
-              </div>
-            ))}
+        <div className="max-w-4xl mx-auto">
+          {/* Header */}
+          <div className="mb-8">
+            <h1 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-2">
+              {t("analytics.title", language)}
+            </h1>
+            <p className="text-gray-600 dark:text-gray-400 text-lg">
+              {t("analytics.subtitle", language)}
+            </p>
           </div>
 
-          <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-6">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-              Analytics Data
-            </h2>
-            <p className="text-gray-500 dark:text-gray-400 text-center py-12">
-              Analytics features coming soon. This will include:
-            </p>
-            <ul className="text-gray-600 dark:text-gray-400 space-y-2 text-center">
-              <li>• Frequently searched products</li>
-              <li>• No-result searches</li>
-              <li>• Price change frequency</li>
-              <li>• B2B/B2C trends</li>
-              <li>• Margin analysis</li>
-              <li>• Product performance</li>
-            </ul>
+          {/* Coming Soon Card */}
+          <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md p-8 md:p-12">
+            <div className="text-center">
+              {/* Icon */}
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 dark:bg-blue-900 rounded-full mb-6">
+                <span className="text-3xl">📊</span>
+              </div>
+
+              {/* Heading */}
+              <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">
+                {t("analytics.comingSoon", language)}
+              </h2>
+
+              {/* Description */}
+              <p className="text-gray-600 dark:text-gray-400 mb-8 max-w-2xl mx-auto">
+                {t("analytics.futureFeatures", language)}
+              </p>
+
+              {/* Features List */}
+              <ul className="space-y-3 text-gray-700 dark:text-gray-300 mb-8 inline-block text-left">
+                {features.map((key) => (
+                  <li
+                    key={key}
+                    className="flex items-center gap-3 text-sm md:text-base"
+                  >
+                    <span className="text-blue-600 dark:text-blue-400 font-bold">
+                      •
+                    </span>
+                    <span>{t(key, language)}</span>
+                  </li>
+                ))}
+              </ul>
+
+              {/* Footer text */}
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                {t("dashboard.comingSoon", language)}
+              </p>
+            </div>
           </div>
         </div>
       </div>

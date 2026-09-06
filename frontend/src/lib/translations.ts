@@ -206,6 +206,17 @@ export const translations: Record<Language, Record<string, string>> = {
     "staffSearch.noProducts": "No products found. Try a different search.",
     "staffSearch.getStarted": "Search for a product to get started",
     "staffSearch.voiceComingSoon": "🎤 Voice search coming soon",
+    "staffSearch.searchFailed": "Search failed",
+"staffSearch.voiceNotSupported": "Voice search is not supported in this browser",
+"staffSearch.microphonePermission": "Microphone permission is required",
+"staffSearch.noSpeech": "No speech was detected",
+"staffSearch.voiceFailed": "Voice search failed",
+"staffSearch.notUpdated": "Not updated yet",
+"staffSearch.justNow": "Just now",
+"staffSearch.oneMinuteAgo": "1 minute ago",
+"staffSearch.minutesAgo": "minutes ago",
+"staffSearch.oneHourAgo": "1 hour ago",
+"staffSearch.hoursAgo": "hours ago",
 
     // Settings
     "settings.title": "Settings",
@@ -213,6 +224,27 @@ export const translations: Record<Language, Record<string, string>> = {
     "settings.language": "Language",
     "settings.lightMode": "Light Mode",
     "settings.darkMode": "Dark Mode",
+    // Settings
+"settings.subtitle": "Manage your application preferences",
+"settings.preferences": "Preferences",
+"settings.application": "Application",
+"settings.applicationName": "Application Name",
+"settings.version": "Version",
+"settings.futureSettings": "More Settings Coming Soon",
+"settings.futureSettingsDescription":
+  "Additional application settings and configuration options may be added in future versions.",
+
+    // Analytics
+    "analytics.title": "Analytics",
+    "analytics.subtitle": "Track trends and performance metrics",
+    "analytics.comingSoon": "Analytics features coming soon",
+    "analytics.futureFeatures": "This will include:",
+    "analytics.frequentlySearched": "Frequently searched products",
+    "analytics.noResultSearches": "No-result searches",
+    "analytics.priceChangeFrequency": "Price change frequency",
+    "analytics.pricesTrends": "B2B/B2C price trends",
+    "analytics.marginAnalysis": "Margin analysis",
+    "analytics.productPerformance": "Product performance",
 
     // Alerts
     "alerts.confirmDelete": "Are you sure?",
@@ -423,16 +455,59 @@ export const translations: Record<Language, Record<string, string>> = {
     "staffSearch.placeholder":
       "பொருளின் பெயர், தமிழ்ப் பெயர், SKU அல்லது பிராண்டைத் தேடுக...",
     "staffSearch.noProducts":
-      "பொருட்கள் எதுவும் கிடைக்கவில்லை. வேறு தேடலைக் கோশிக்கவும்.",
+      "பொருட்கள் எதுவும் கிடைக்கவில்லை.",
     "staffSearch.getStarted": "தொடங்குவதற்கு ஒரு பொருளைத் தேடுக",
     "staffSearch.voiceComingSoon": "🎤 குரல் தேடல் விரைவில் வரும்",
+    "staffSearch.searchFailed": "தேடல் தோல்வியடைந்தது",
+"staffSearch.voiceNotSupported":
+  "இந்த உலாவியில் குரல் தேடல் ஆதரிக்கப்படவில்லை",
+"staffSearch.microphonePermission":
+  "மைக்ரோஃபோன் அனுமதி தேவை",
+"staffSearch.noSpeech":
+  "குரல் எதுவும் கண்டறியப்படவில்லை",
+"staffSearch.voiceFailed":
+  "குரல் தேடல் தோல்வியடைந்தது",
+"staffSearch.notUpdated":
+  "இன்னும் புதுப்பிக்கப்படவில்லை",
+"staffSearch.justNow":
+  "இப்போதுதான்",
+"staffSearch.oneMinuteAgo":
+  "1 நிமிடத்திற்கு முன்",
+"staffSearch.minutesAgo":
+  "நிமிடங்களுக்கு முன்",
+"staffSearch.oneHourAgo":
+  "1 மணி நேரத்திற்கு முன்",
+"staffSearch.hoursAgo":
+  "மணி நேரங்களுக்கு முன்",
 
     // Settings
     "settings.title": "அமைப்புகள்",
     "settings.theme": "தீம்",
     "settings.language": "மொழி",
     "settings.lightMode": "ஒளி பயன்முறை",
-    "settings.darkMode": "암흑 பயன்முறை",
+    "settings.darkMode": "இருள் பயன்முறை",
+    // Settings
+"settings.subtitle": "பயன்பாட்டின் விருப்பங்களை நிர்வகிக்கவும்",
+"settings.preferences": "விருப்பங்கள்",
+
+"settings.application": "பயன்பாடு",
+"settings.applicationName": "பயன்பாட்டின் பெயர்",
+"settings.version": "பதிப்பு",
+"settings.futureSettings": "மேலும் அமைப்புகள் விரைவில்",
+"settings.futureSettingsDescription":
+  "கூடுதல் பயன்பாட்டு அமைப்புகள் மற்றும் உள்ளமைவு விருப்பங்கள் எதிர்கால பதிப்புகளில் சேர்க்கப்படலாம்.",
+
+    // Analytics
+    "analytics.title": "பகுப்பாய்வு",
+    "analytics.subtitle": "போக்குகள் மற்றும் செயல்திறன் அளவீடுகளை கண்காணிக்கவும்",
+    "analytics.comingSoon": "பகுப்பாய்வு அம்சங்கள் விரைவில் வரும்",
+    "analytics.futureFeatures": "இது பின்வருவனவற்றை உள்ளடக்கும்:",
+    "analytics.frequentlySearched": "அடிக்கடி தேடப்பட்ட பொருட்கள்",
+    "analytics.noResultSearches": "முடிவு இல்லாத தேடல்கள்",
+    "analytics.priceChangeFrequency": "விலை மாற்றத்தின் அதிர்வெண்",
+    "analytics.pricesTrends": "B2B/B2C விலை போக்குகள்",
+    "analytics.marginAnalysis": "விளிம்பு பகுப்பாய்வு",
+    "analytics.productPerformance": "பொருள் செயல்திறன்",
 
     // Alerts
     "alerts.confirmDelete": "நிச்சயமாக?",

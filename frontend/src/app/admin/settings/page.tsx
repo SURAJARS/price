@@ -1,117 +1,153 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/stores/authStore";
+import { useLanguageStore } from "@/stores/languageStore";
+import { useThemeStore } from "@/stores/themeStore";
+import { t } from "@/lib/translations";
 import Navigation from "@/components/Navigation";
 
 export default function SettingsPage() {
   const router = useRouter();
   const { isAuthenticated, isOwner } = useAuthStore();
 
+  const { language, setLanguage } = useLanguageStore();
+  const { theme, setTheme } = useThemeStore();
+
+  const [mounted, setMounted] = useState(false);
+
   useEffect(() => {
-    if (!isAuthenticated || !isOwner) {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted) return;
+
+    if (!isAuthenticated) {
       router.push("/login");
+      return;
     }
-  }, [isAuthenticated, isOwner, router]);
+
+    if (!isOwner) {
+      router.push("/staff/search");
+    }
+  }, [mounted, isAuthenticated, isOwner, router]);
+
+  if (!mounted || !isAuthenticated || !isOwner) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-950">
       <Navigation />
+
       <div className="p-4 md:p-6">
         <div className="max-w-4xl mx-auto">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-            Settings
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400 mb-8">
-            Manage application settings and preferences
-          </p>
+          {/* Header */}
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+              {t("settings.title", language)}
+            </h1>
+
+            <p className="text-gray-600 dark:text-gray-400 mt-2">
+              {t("settings.subtitle", language)}
+            </p>
+          </div>
 
           <div className="space-y-6">
-            {/* General Settings */}
+            {/* Preferences */}
             <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-6">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                General Settings
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-5">
+                {t("settings.preferences", language)}
               </h2>
-              <div className="space-y-4">
+
+              <div className="space-y-6">
+                {/* Language */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Application Name
+                    {t("settings.language", language)}
                   </label>
-                  <input
-                    type="text"
-                    value="GroceryPrice"
-                    disabled
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-gray-50 dark:bg-slate-700 text-gray-600 dark:text-gray-400"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Currency
-                  </label>
+
                   <select
-                    disabled
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-gray-50 dark:bg-slate-700 text-gray-600 dark:text-gray-400"
+                    value={language}
+                    onChange={(e) => setLanguage(e.target.value as "en" | "ta")}
+                    className="w-full px-3 py-2.5 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
-                    <option>₹ INR (Indian Rupee)</option>
+                    <option value="en">English</option>
+                    <option value="ta">தமிழ்</option>
+                  </select>
+                </div>
+
+                {/* Theme */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    {t("settings.theme", language)}
+                  </label>
+
+                  <select
+                    value={theme}
+                    onChange={(e) =>
+                      setTheme(e.target.value as "light" | "dark")
+                    }
+                    className="w-full px-3 py-2.5 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="light">
+                      {t("settings.lightMode", language)}
+                    </option>
+                    <option value="dark">
+                      {t("settings.darkMode", language)}
+                    </option>
                   </select>
                 </div>
               </div>
             </div>
 
-            {/* Notification Settings */}
+            {/* Application */}
             <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-6">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                Notifications
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-5">
+                {t("settings.application", language)}
               </h2>
-              <div className="space-y-3">
-                {[
-                  "Price change alerts",
-                  "Staff login notifications",
-                  "Low stock warnings",
-                ].map((setting, i) => (
-                  <label
-                    key={i}
-                    className="flex items-center gap-3 cursor-pointer"
-                  >
-                    <input
-                      type="checkbox"
-                      disabled
-                      defaultChecked
-                      className="rounded"
-                    />
-                    <span className="text-gray-700 dark:text-gray-300">
-                      {setting}
-                    </span>
-                  </label>
-                ))}
+
+              <div className="space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+                  <span className="text-sm text-gray-600 dark:text-gray-400">
+                    {t("settings.applicationName", language)}
+                  </span>
+
+                  <span className="font-medium text-gray-900 dark:text-white">
+                    GroceryPrice
+                  </span>
+                </div>
+
+                <div className="border-t border-gray-200 dark:border-slate-700" />
+
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+                  <span className="text-sm text-gray-600 dark:text-gray-400">
+                    {t("settings.version", language)}
+                  </span>
+
+                  <span className="font-medium text-gray-900 dark:text-white">
+                    1.0.0
+                  </span>
+                </div>
               </div>
             </div>
 
-            {/* About */}
+            {/* Future Settings */}
             <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-6">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                About
-              </h2>
-              <div className="space-y-2 text-gray-600 dark:text-gray-400 text-sm">
-                <p>
-                  <span className="font-medium text-gray-900 dark:text-white">
-                    Application:
-                  </span>{" "}
-                  GroceryPrice
-                </p>
-                <p>
-                  <span className="font-medium text-gray-900 dark:text-white">
-                    Version:
-                  </span>{" "}
-                  1.0.0
-                </p>
-                <p>
-                  <span className="font-medium text-gray-900 dark:text-white">
-                    Build Date:
-                  </span>{" "}
-                  2026-09-04
-                </p>
+              <div className="flex items-start gap-4">
+                <div className="text-3xl shrink-0">⚙️</div>
+
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                    {t("settings.futureSettings", language)}
+                  </h2>
+
+                  <p className="text-gray-600 dark:text-gray-400 text-sm leading-6">
+                    {t("settings.futureSettingsDescription", language)}
+                  </p>
+                </div>
               </div>
             </div>
           </div>
