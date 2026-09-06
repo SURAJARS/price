@@ -3,32 +3,37 @@
 import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useAuthStore } from "@/stores/authStore";
+import { useThemeStore } from "@/stores/themeStore";
+import { useLanguageStore } from "@/stores/languageStore";
+import { t } from "@/lib/translations";
 import Link from "next/link";
 import { UserRole } from "@/types";
 
 interface NavItem {
-  label: string;
+  labelKey: string;
   href: string;
   icon?: string;
 }
 
 const ADMIN_NAV_ITEMS: NavItem[] = [
-  { label: "Dashboard", href: "/admin/dashboard", icon: "📊" },
-  { label: "Products", href: "/admin/products", icon: "📦" },
-  { label: "Categories", href: "/admin/categories", icon: "🏷️" },
-  { label: "Staff", href: "/admin/staff", icon: "👥" },
-  { label: "Analytics", href: "/admin/analytics", icon: "📈" },
-  { label: "Settings", href: "/admin/settings", icon: "⚙️" },
+  { labelKey: "nav.dashboard", href: "/admin/dashboard", icon: "📊" },
+  { labelKey: "nav.products", href: "/admin/products", icon: "📦" },
+  { labelKey: "nav.categories", href: "/admin/categories", icon: "🏷️" },
+  { labelKey: "nav.staffNav", href: "/admin/staff", icon: "👥" },
+  { labelKey: "nav.analytics", href: "/admin/analytics", icon: "📈" },
+  { labelKey: "nav.settings", href: "/admin/settings", icon: "⚙️" },
 ];
 
 const STAFF_NAV_ITEMS: NavItem[] = [
-  { label: "Search", href: "/staff/search", icon: "🔍" },
+  { labelKey: "nav.search", href: "/staff/search", icon: "🔍" },
 ];
 
 export default function Navigation() {
   const router = useRouter();
   const pathname = usePathname();
   const { user, logout } = useAuthStore();
+  const { theme, toggleTheme } = useThemeStore();
+  const { language, toggleLanguage } = useLanguageStore();
   const isAuthenticated = !!user;
   const isOwner = user?.role === UserRole.OWNER;
   const isStaff = user?.role === UserRole.STAFF;
@@ -99,17 +104,17 @@ export default function Navigation() {
   return (
     <>
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-white shadow-sm border-b border-gray-200">
+      <header className="sticky top-0 z-40 bg-white dark:bg-slate-900 shadow-sm border-b border-gray-200 dark:border-slate-700 transition-colors">
         <div className="px-4 py-3 flex items-center justify-between">
           {/* Hamburger Button */}
           <button
             onClick={() => setIsOpen(!isOpen)}
-            className="p-2 rounded-lg hover:bg-gray-100 transition-colors lg:hidden"
+            className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors lg:hidden"
             aria-label="Toggle menu"
             aria-expanded={isOpen}
           >
             <svg
-              className="w-6 h-6 text-gray-700"
+              className="w-6 h-6 text-gray-700 dark:text-gray-300"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -141,19 +146,72 @@ export default function Navigation() {
                   : "/staff/search"
               }
             >
-              <h1 className="text-lg font-bold text-gray-900">Grocery Price</h1>
+              <h1 className="text-lg font-bold text-gray-900 dark:text-white">
+                {t("nav.title", language)}
+              </h1>
             </Link>
+          </div>
+
+          {/* Theme and Language Toggles */}
+          <div className="flex items-center gap-2 mr-4">
+            {/* Language Toggle */}
+            <button
+              onClick={toggleLanguage}
+              className="px-2 py-1 text-xs font-semibold rounded-md bg-gray-100 dark:bg-slate-800 text-gray-900 dark:text-white hover:bg-gray-200 dark:hover:bg-slate-700 transition-colors"
+              title="Toggle language"
+            >
+              {language === "en" ? "EN" : "தமிழ்"}
+            </button>
+
+            {/* Theme Toggle */}
+            <button
+              onClick={toggleTheme}
+              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
+              title="Toggle theme"
+            >
+              {theme === "light" ? (
+                <svg
+                  className="w-5 h-5 text-gray-700"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
+                  />
+                </svg>
+              ) : (
+                <svg
+                  className="w-5 h-5 text-yellow-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 3v1m0 16v1m9-9h-1m-16 0H1m15.364 1.636l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"
+                  />
+                </svg>
+              )}
+            </button>
           </div>
 
           {/* User Info */}
           <div className="flex items-center gap-2">
             <div className="text-right hidden sm:block">
-              <p className="text-sm font-medium text-gray-900">{user?.name}</p>
-              <p className="text-xs text-gray-600">
+              <p className="text-sm font-medium text-gray-900 dark:text-white">
+                {user?.name}
+              </p>
+              <p className="text-xs text-gray-600 dark:text-gray-400">
                 {user?.role === UserRole.OWNER
-                  ? "Owner"
+                  ? t("nav.owner", language)
                   : user?.role === UserRole.STAFF
-                    ? "Staff"
+                    ? t("nav.staffRole", language)
                     : ""}
               </p>
             </div>
@@ -176,20 +234,22 @@ export default function Navigation() {
       )}
 
       <nav
-        className={`fixed left-0 top-0 h-full w-64 bg-white shadow-lg transform transition-transform duration-300 z-40 lg:hidden ${
+        className={`fixed left-0 top-0 h-full w-64 bg-white dark:bg-slate-900 shadow-lg transform transition-transform duration-300 z-40 lg:hidden ${
           isOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
         {/* Close button */}
-        <div className="flex justify-between items-center px-4 py-4 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-900">Menu</h2>
+        <div className="flex justify-between items-center px-4 py-4 border-b border-gray-200 dark:border-slate-700">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+            Menu
+          </h2>
           <button
             onClick={() => setIsOpen(false)}
-            className="p-1 rounded-lg hover:bg-gray-100 transition-colors"
+            className="p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
             aria-label="Close menu"
           >
             <svg
-              className="w-6 h-6 text-gray-700"
+              className="w-6 h-6 text-gray-700 dark:text-gray-300"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -212,30 +272,30 @@ export default function Navigation() {
               href={item.href}
               className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors mb-1 ${
                 isActive(item.href)
-                  ? "bg-blue-50 text-blue-600 border-l-4 border-blue-600"
-                  : "text-gray-700 hover:bg-gray-50"
+                  ? "bg-blue-50 dark:bg-blue-900 text-blue-600 dark:text-blue-400 border-l-4 border-blue-600 dark:border-blue-400"
+                  : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-800"
               }`}
             >
               <span className="text-xl">{item.icon}</span>
-              <span className="font-medium">{item.label}</span>
+              <span className="font-medium">{t(item.labelKey, language)}</span>
             </Link>
           ))}
         </div>
 
         {/* Logout Button */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200 bg-gray-50">
+        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800">
           <button
             onClick={handleLogout}
-            className="w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium flex items-center justify-center gap-2"
+            className="w-full px-4 py-2 bg-red-600 dark:bg-red-700 text-white rounded-lg hover:bg-red-700 dark:hover:bg-red-600 transition-colors font-medium flex items-center justify-center gap-2"
           >
             <span>🚪</span>
-            Logout
+            {t("nav.logout", language)}
           </button>
         </div>
       </nav>
 
       {/* Desktop Navigation - Hidden by default, visible on lg */}
-      <div className="hidden lg:block bg-white shadow-sm border-b border-gray-200">
+      <div className="hidden lg:block bg-white dark:bg-slate-900 shadow-sm border-b border-gray-200 dark:border-slate-700 transition-colors">
         <nav className="max-w-full px-6 py-4">
           <div className="flex items-center gap-8">
             {navItems.map((item) => (
@@ -244,12 +304,12 @@ export default function Navigation() {
                 href={item.href}
                 className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors text-sm font-medium ${
                   isActive(item.href)
-                    ? "bg-blue-50 text-blue-600 border-b-2 border-blue-600"
-                    : "text-gray-700 hover:text-gray-900 hover:bg-gray-50"
+                    ? "bg-blue-50 dark:bg-blue-900 text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400"
+                    : "text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-slate-800"
                 }`}
               >
                 <span className="text-lg">{item.icon}</span>
-                {item.label}
+                {t(item.labelKey, language)}
               </Link>
             ))}
 
@@ -257,9 +317,9 @@ export default function Navigation() {
             <div className="ml-auto">
               <button
                 onClick={handleLogout}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
+                className="px-4 py-2 bg-red-600 dark:bg-red-700 text-white rounded-lg hover:bg-red-700 dark:hover:bg-red-600 transition-colors text-sm font-medium"
               >
-                Logout
+                {t("nav.logout", language)}
               </button>
             </div>
           </div>

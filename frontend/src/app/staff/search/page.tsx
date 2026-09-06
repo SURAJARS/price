@@ -225,7 +225,7 @@ export default function StaffSearchPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-slate-950">
       <Navigation />
 
       {/* Main Content */}
@@ -248,19 +248,19 @@ export default function StaffSearchPage() {
                       }
                     }}
                     disabled={isLoading}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder-gray-400"
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 text-gray-900 dark:text-white bg-white dark:bg-slate-800 placeholder-gray-400 dark:placeholder-gray-500"
                   />
 
                   {/* Autocomplete Dropdown */}
                   {isAutocompleteOpen && suggestions.length > 0 && (
-                    <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded-md shadow-lg z-50 max-h-96 overflow-y-auto">
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-md shadow-lg z-50 max-h-96 overflow-y-auto">
                       {isAutocompleteLoading && (
-                        <div className="p-3 text-center text-sm text-gray-500">
+                        <div className="p-3 text-center text-sm text-gray-500 dark:text-gray-400">
                           Loading...
                         </div>
                       )}
                       {!isAutocompleteLoading && suggestions.length === 0 && (
-                        <div className="p-3 text-center text-sm text-gray-500">
+                        <div className="p-3 text-center text-sm text-gray-500 dark:text-gray-400">
                           No products found
                         </div>
                       )}
@@ -269,10 +269,10 @@ export default function StaffSearchPage() {
                           <div
                             key={product._id}
                             onClick={() => handleSelectSuggestion(product)}
-                            className={`p-3 cursor-pointer border-b border-gray-100 transition ${
+                            className={`p-3 cursor-pointer border-b border-gray-100 dark:border-slate-700 transition ${
                               index === selectedSuggestionIndex
-                                ? "bg-blue-50"
-                                : "hover:bg-gray-50"
+                                ? "bg-blue-50 dark:bg-blue-900"
+                                : "hover:bg-gray-50 dark:hover:bg-slate-700"
                             }`}
                           >
                             <div className="flex gap-3 items-start">
@@ -284,23 +284,23 @@ export default function StaffSearchPage() {
                                 />
                               )}
                               <div className="flex-1 min-w-0">
-                                <p className="font-semibold text-gray-900 text-sm truncate">
+                                <p className="font-semibold text-gray-900 dark:text-white text-sm truncate">
                                   {product.englishName}
                                 </p>
                                 {product.tamilName && (
-                                  <p className="text-xs text-gray-600 truncate">
+                                  <p className="text-xs text-gray-600 dark:text-gray-400 truncate">
                                     {product.tamilName}
                                   </p>
                                 )}
                                 <div className="flex gap-2 mt-1 flex-wrap">
                                   {product.category && (
-                                    <span className="text-xs bg-gray-100 text-gray-700 px-2 py-0.5 rounded">
+                                    <span className="text-xs bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 px-2 py-0.5 rounded">
                                       {product.category.name}
                                     </span>
                                   )}
                                   {product.variants &&
                                     product.variants.length > 0 && (
-                                      <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">
+                                      <span className="text-xs bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded">
                                         {product.variants.length} size
                                         {product.variants.length !== 1
                                           ? "s"
@@ -320,7 +320,7 @@ export default function StaffSearchPage() {
                     suggestions.length === 0 &&
                     !isAutocompleteLoading &&
                     searchQuery.trim().length >= 2 && (
-                      <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded-md shadow-lg z-50 p-3 text-center text-sm text-gray-500">
+                      <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-md shadow-lg z-50 p-3 text-center text-sm text-gray-500 dark:text-gray-400">
                         No products found
                       </div>
                     )}
@@ -329,7 +329,7 @@ export default function StaffSearchPage() {
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 whitespace-nowrap"
+                  className="px-6 py-2 bg-blue-600 dark:bg-blue-700 text-white rounded-md hover:bg-blue-700 dark:hover:bg-blue-600 disabled:opacity-50 whitespace-nowrap"
                 >
                   {isLoading ? "Searching..." : "Search"}
                 </button>
@@ -338,33 +338,33 @@ export default function StaffSearchPage() {
           </div>
 
           {/* Microphone Button Placeholder */}
-          <div className="mt-4 text-center text-sm text-gray-600">
+          <div className="mt-4 text-center text-sm text-gray-600 dark:text-gray-400">
             🎤 Voice search coming soon
           </div>
         </div>
 
         {/* Error Message */}
         {error && (
-          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-md">
-            <p className="text-red-800">{error}</p>
+          <div className="mb-4 p-4 bg-red-50 dark:bg-red-900 border border-red-200 dark:border-red-700 rounded-md">
+            <p className="text-red-800 dark:text-red-200">{error}</p>
           </div>
         )}
 
         {/* Selected Product Detail */}
         {selectedProduct && (
-          <div className="mb-8 p-6 bg-white rounded-lg shadow-md">
+          <div className="mb-8 p-6 bg-white dark:bg-slate-800 rounded-lg shadow-md">
             <button
               onClick={() => setSelectedProduct(null)}
-              className="mb-4 text-sm text-blue-600 hover:text-blue-800"
+              className="mb-4 text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
             >
               ← Back to results
             </button>
 
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
               {selectedProduct.englishName}
             </h2>
             {selectedProduct.tamilName && (
-              <p className="text-lg text-gray-600 mb-4">
+              <p className="text-lg text-gray-600 dark:text-gray-400 mb-4">
                 {selectedProduct.tamilName}
               </p>
             )}
@@ -380,14 +380,20 @@ export default function StaffSearchPage() {
             <div className="grid grid-cols-2 gap-4 mb-6">
               {selectedProduct.category && (
                 <div>
-                  <p className="text-sm text-gray-600">Category</p>
-                  <p className="font-medium">{selectedProduct.category.name}</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    Category
+                  </p>
+                  <p className="font-medium text-gray-900 dark:text-white">
+                    {selectedProduct.category.name}
+                  </p>
                 </div>
               )}
               {selectedProduct.sku && (
                 <div>
-                  <p className="text-sm text-gray-600">SKU</p>
-                  <p className="font-medium text-gray-900">
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    SKU
+                  </p>
+                  <p className="font-medium text-gray-900 dark:text-white">
                     {selectedProduct.sku}
                   </p>
                 </div>
@@ -396,33 +402,37 @@ export default function StaffSearchPage() {
 
             {/* Variants */}
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-gray-900">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
                 Available Sizes
               </h3>
               {selectedProduct.variants?.map((variant) => (
                 <div
                   key={variant._id}
-                  className="p-4 border border-gray-200 rounded-lg hover:bg-blue-50 transition"
+                  className="p-4 border border-gray-200 dark:border-slate-700 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900 transition bg-white dark:bg-slate-700"
                 >
                   <div className="flex justify-between items-start mb-2">
-                    <p className="font-semibold text-gray-900">
+                    <p className="font-semibold text-gray-900 dark:text-white">
                       {variant.packSize} {variant.unit}
                     </p>
-                    <span className="text-xs text-gray-500">
+                    <span className="text-xs text-gray-500 dark:text-gray-400">
                       Updated {getLastUpdatedText(variant._id)}
                     </span>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <p className="text-sm text-gray-600">B2B Price</p>
-                      <p className="text-2xl font-bold text-blue-600">
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        B2B Price
+                      </p>
+                      <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
                         ₹{variant.b2bPrice}
                       </p>
                     </div>
                     <div>
-                      <p className="text-sm text-gray-600">B2C Price</p>
-                      <p className="text-2xl font-bold text-green-600">
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        B2C Price
+                      </p>
+                      <p className="text-2xl font-bold text-green-600 dark:text-green-400">
                         ₹{variant.b2cPrice}
                       </p>
                     </div>
@@ -440,7 +450,7 @@ export default function StaffSearchPage() {
               <div
                 key={product._id}
                 onClick={() => handleSelectProduct(product)}
-                className="p-6 bg-white rounded-lg shadow-md hover:shadow-lg cursor-pointer transition transform hover:scale-105"
+                className="p-6 bg-white dark:bg-slate-800 rounded-lg shadow-md hover:shadow-lg cursor-pointer transition transform hover:scale-105"
               >
                 {product.image && (
                   <img
@@ -450,11 +460,11 @@ export default function StaffSearchPage() {
                   />
                 )}
 
-                <h3 className="font-bold text-gray-900 mb-1">
+                <h3 className="font-bold text-gray-900 dark:text-white mb-1">
                   {product.englishName}
                 </h3>
                 {product.tamilName && (
-                  <p className="text-sm text-gray-600 mb-3">
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
                     {product.tamilName}
                   </p>
                 )}
@@ -463,16 +473,16 @@ export default function StaffSearchPage() {
                   <div className="space-y-2">
                     {product.variants.slice(0, 2).map((variant) => (
                       <div key={variant._id} className="text-sm">
-                        <p className="text-gray-600">
+                        <p className="text-gray-600 dark:text-gray-400">
                           {variant.packSize} {variant.unit}
                         </p>
-                        <p className="font-semibold text-blue-600">
+                        <p className="font-semibold text-blue-600 dark:text-blue-400">
                           ₹{variant.b2bPrice}
                         </p>
                       </div>
                     ))}
                     {product.variants.length > 2 && (
-                      <p className="text-xs text-gray-500">
+                      <p className="text-xs text-gray-500 dark:text-gray-500">
                         +{product.variants.length - 2} more sizes
                       </p>
                     )}
@@ -486,7 +496,7 @@ export default function StaffSearchPage() {
         {/* Empty State */}
         {!selectedProduct && products.length === 0 && !error && searchQuery && (
           <div className="text-center py-12">
-            <p className="text-gray-600">
+            <p className="text-gray-600 dark:text-gray-400">
               No products found. Try a different search.
             </p>
           </div>
@@ -497,7 +507,7 @@ export default function StaffSearchPage() {
           !error &&
           !searchQuery && (
             <div className="text-center py-12">
-              <p className="text-gray-600">
+              <p className="text-gray-600 dark:text-gray-400">
                 Search for a product to get started
               </p>
             </div>
