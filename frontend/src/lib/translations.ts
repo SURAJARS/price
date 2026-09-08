@@ -3,7 +3,7 @@ import { Language } from "@/stores/languageStore";
 export const translations: Record<Language, Record<string, string>> = {
   en: {
     // Navigation
-    "nav.title": "Grocery Price",
+    "nav.title": "Kannan Stores",
     "nav.dashboard": "Dashboard",
     "nav.products": "Products",
     "nav.categories": "Categories",
@@ -252,7 +252,7 @@ export const translations: Record<Language, Record<string, string>> = {
   },
   ta: {
     // Navigation
-    "nav.title": "பணி விலை",
+    "nav.title": "கண்ணன் ஸ்டோர்ஸ்",
     "nav.dashboard": "டாஷ்போர்டு",
     "nav.products": "பொருட்கள்",
     "nav.categories": "பிரிவுகள்",

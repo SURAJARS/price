@@ -43,7 +43,15 @@ const variantSchema = new Schema<any>(
 );
 
 // Index for quick lookups
+// Index for quick lookups
 variantSchema.index({ productId: 1 });
+
+// Prevent duplicate variants for the same product
+// Example: the same product cannot have two separate 500 G variants
+variantSchema.index(
+  { productId: 1, packSize: 1, unit: 1 },
+  { unique: true }
+);
 
 export const ProductVariant = mongoose.model<any>(
   "ProductVariant",

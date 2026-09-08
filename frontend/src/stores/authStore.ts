@@ -60,12 +60,28 @@ export const useAuthStore = create<AuthStore>((set) => ({
   isOwner: storedAuth.user?.role === UserRole.OWNER,
   isStaff: storedAuth.user?.role === UserRole.STAFF,
 
-  setUser: (user) => set({ user,
-    isAuthenticated: !!user,
-    isOwner: user?.role === UserRole.OWNER,
-    isStaff: user?.role === UserRole.STAFF, }),
+  setUser: (user) => {
+    if (typeof window !== "undefined" && user) {
+      localStorage.setItem("user", JSON.stringify(user));
+    } else if (typeof window !== "undefined") {
+      localStorage.removeItem("user");
+    }
+    set({
+      user,
+      isAuthenticated: !!user,
+      isOwner: user?.role === UserRole.OWNER,
+      isStaff: user?.role === UserRole.STAFF,
+    });
+  },
 
-  setToken: (token) => set({ token }),
+  setToken: (token) => {
+    if (typeof window !== "undefined" && token) {
+      localStorage.setItem("token", token);
+    } else if (typeof window !== "undefined") {
+      localStorage.removeItem("token");
+    }
+    set({ token });
+  },
 
   setLoading: (loading) => set({ isLoading: loading }),
 

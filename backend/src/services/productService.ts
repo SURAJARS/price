@@ -111,9 +111,20 @@ export class ProductService {
       // Record price history before update
       await PriceHistory.create({
         productVariantId: variantId,
-        purchaseCost: purchaseCost || variant.purchaseCost,
-        b2bPrice: b2bPrice || variant.b2bPrice,
-        b2cPrice: b2cPrice || variant.b2cPrice,
+        purchaseCost:
+  purchaseCost !== undefined
+    ? purchaseCost
+    : variant.purchaseCost,
+
+b2bPrice:
+  b2bPrice !== undefined
+    ? b2bPrice
+    : variant.b2bPrice,
+
+b2cPrice:
+  b2cPrice !== undefined
+    ? b2cPrice
+    : variant.b2cPrice,
         changedBy: userId,
       });
 
@@ -235,7 +246,7 @@ export class ProductService {
         tamilName: data.tamilName?.trim() || "",
         category: data.categoryId,
         subcategory: data.subcategoryId || null,
-        sku: data.sku?.trim() || "",
+        sku: data.sku?.trim() || undefined,
         brand: data.brand?.trim() || "",
         description: data.description?.trim() || "",
         image: data.image || "",
@@ -341,38 +352,56 @@ export class ProductService {
 
   // Create variant
   static async createVariant(
-    productId: string,
-    data: {
-      packSize: string;
-      unit: string;
-      purchaseCost: number;
-      b2bPrice: number;
-      b2cPrice: number;
-    }
-  ): Promise<any> {
-    try {
-      const product = await Product.findById(productId);
-
-      if (!product) {
-        throw new AppError(404, "Product not found");
-      }
-
-      const variant = new ProductVariant({
-        productId,
-        packSize: data.packSize.trim(),
-        unit: data.unit.toUpperCase(),
-        purchaseCost: data.purchaseCost,
-        b2bPrice: data.b2bPrice,
-        b2cPrice: data.b2cPrice,
-        isActive: true,
-      });
-
-      await variant.save();
-      return variant;
-    } catch (error) {
-      throw error;
-    }
+  productId: string,
+  data: {
+    packSize: string;
+    unit: string;
+    purchaseCost: number;
+    b2bPrice: number;
+    b2cPrice: number;
   }
+): Promise<any> {
+  try {
+    const product = await Product.findById(productId);
+
+    if (!product) {
+      throw new AppError(404, "Product not found");
+    }
+
+    const packSize = data.packSize.trim();
+    const unit = data.unit.toUpperCase();
+
+    // Prevent duplicate variant for the same product
+    const existingVariant = await ProductVariant.findOne({
+      productId,
+      packSize,
+      unit,
+    });
+
+    if (existingVariant) {
+      throw new AppError(
+        409,
+        `A variant with pack size ${packSize} ${unit} already exists for this product`
+      );
+    }
+
+    const variant = new ProductVariant({
+      productId,
+      packSize,
+      unit,
+      purchaseCost: data.purchaseCost,
+      b2bPrice: data.b2bPrice,
+      b2cPrice: data.b2cPrice,
+      isActive: true,
+    });
+
+    await variant.save();
+
+    return variant;
+  } catch (error) {
+    throw error;
+  }
+}
 
   // Update variant
   static async updateVariant(

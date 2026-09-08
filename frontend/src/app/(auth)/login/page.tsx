@@ -26,10 +26,6 @@ export default function LoginPage() {
         setToken(token);
         setUser(user);
 
-        // Save to localStorage
-        localStorage.setItem("token", token);
-        localStorage.setItem("user", JSON.stringify(user));
-
         // Redirect based on role
         if (user.role === UserRole.OWNER) {
           router.push("/admin/dashboard");
