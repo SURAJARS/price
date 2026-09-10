@@ -1,6 +1,23 @@
 import mongoose, { Schema, Document } from "mongoose";
 import { IProduct } from "../types";
 
+const priceLevel = {
+  price: {
+    type: Number,
+    required: true,
+    min: 0,
+  },
+  adjustment: {
+    type: Number,
+    default: 0,
+  },
+  remarks: {
+    type: String,
+    trim: true,
+    default: "",
+  },
+};
+
 const productSchema = new Schema<any>(
   {
     englishName: {
@@ -27,6 +44,10 @@ const productSchema = new Schema<any>(
       sparse: true,
       trim: true,
     },
+    giftCode: {
+      type: String,
+      trim: true,
+    },
     brand: {
       type: String,
       trim: true,
@@ -37,6 +58,38 @@ const productSchema = new Schema<any>(
     },
     image: {
       type: String, // Cloudinary URL
+    },
+    purchasePrice: {
+      type: Number,
+      required: [true, "Purchase price is required"],
+      min: 0,
+    },
+    pricing: {
+      fixed: {
+        type: Boolean,
+        default: true,
+      },
+      calculationType: {
+        type: String,
+        enum: ["percentage", "value"],
+        default: "percentage",
+      },
+      pl1: {
+        type: priceLevel,
+        required: true,
+      },
+      pl2: {
+        type: priceLevel,
+        required: true,
+      },
+      pl3: {
+        type: priceLevel,
+        required: true,
+      },
+      pl4: {
+        type: priceLevel,
+        required: true,
+      },
     },
     isActive: {
       type: Boolean,

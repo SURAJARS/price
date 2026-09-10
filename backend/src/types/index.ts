@@ -18,6 +18,23 @@ export interface IUser {
   updatedAt?: Date;
 }
 
+// Price level interface
+export interface IPriceLevel {
+  price: number;
+  adjustment?: number;
+  remarks?: string;
+}
+
+// Product pricing interface
+export interface IProductPricing {
+  fixed: boolean;
+  calculationType: "percentage" | "value";
+  pl1: IPriceLevel;
+  pl2: IPriceLevel;
+  pl3: IPriceLevel;
+  pl4: IPriceLevel;
+}
+
 // Product document interface
 export interface IProduct {
   _id?: string;
@@ -26,15 +43,18 @@ export interface IProduct {
   category: string; // Category ID
   subcategory?: string; // Subcategory ID
   sku?: string;
+  giftCode?: string;
   brand?: string;
   description?: string;
   image?: string; // Cloudinary URL
+  purchasePrice: number;
+  pricing: IProductPricing;
   isActive: boolean;
   createdAt?: Date;
   updatedAt?: Date;
 }
 
-// Product variant interface
+// Product variant interface (for backward compatibility with old products)
 export interface IProductVariant {
   _id?: string;
   productId: string;

@@ -1,59 +1,84 @@
 import { Product } from "../models/Product";
-import { ProductVariant } from "../models/ProductVariant";
-import { PriceHistory } from "../models/PriceHistory";
 import { AppError } from "../middleware/errorHandler";
-import { notifyPriceUpdate } from "../config/socket";
+import { IPriceLevel } from "../types";
 
 export class ProductService {
-  // Search products (for staff)
- static async searchProducts(query: string, limit: number = 20) {
-  try {
-    const searchTerm = query.trim();
-
-    if (!searchTerm) {
-      return [];
+  // Helper: Calculate prices based on fixed mode and calculation type
+  private static calculatePrices(
+    pl1Price: number,
+    pl2Adjustment: number,
+    pl3Adjustment: number,
+    pl4Adjustment: number,
+    fixed: boolean,
+    calculationType: "percentage" | "value"
+  ) {
+    if (fixed) {
+      // In fixed mode, adjustments are the actual prices
+      return {
+        pl1: pl1Price,
+        pl2: pl2Adjustment,
+        pl3: pl3Adjustment,
+        pl4: pl4Adjustment,
+      };
     }
 
-    // Escape regex special characters so user input is treated as plain text
-    const escapedQuery = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-
-    // Case-insensitive partial search across product name,
-    // Tamil name, SKU and brand.
-    const products = await Product.find({
-      isActive: true,
-      $or: [
-        { englishName: { $regex: escapedQuery, $options: "i" } },
-        { tamilName: { $regex: escapedQuery, $options: "i" } },
-        { sku: { $regex: escapedQuery, $options: "i" } },
-        { brand: { $regex: escapedQuery, $options: "i" } },
-      ],
-    })
-      .sort({ englishName: 1 })
-      .limit(limit)
-      .lean();
-
-    // Enrich with active variants
-    const enrichedProducts = await Promise.all(
-      products.map(async (product: any) => {
-        const variants = await ProductVariant.find(
-          { productId: product._id, isActive: true },
-          { purchaseCost: 0 }
-        ).lean();
-
-        return {
-          ...product,
-          variants,
-        };
-      })
-    );
-
-    return enrichedProducts;
-  } catch (error) {
-    throw error;
+    // In non-fixed mode, calculate from PL1
+    if (calculationType === "percentage") {
+      const pl2 = pl1Price - (pl1Price * pl2Adjustment) / 100;
+      const pl3 = pl1Price - (pl1Price * pl3Adjustment) / 100;
+      const pl4 = pl1Price - (pl1Price * pl4Adjustment) / 100;
+      return {
+        pl1: pl1Price,
+        pl2: Math.round(pl2 * 100) / 100, // Round to 2 decimals
+        pl3: Math.round(pl3 * 100) / 100,
+        pl4: Math.round(pl4 * 100) / 100,
+      };
+    } else {
+      // value mode
+      return {
+        pl1: pl1Price,
+        pl2: pl1Price - pl2Adjustment,
+        pl3: pl1Price - pl3Adjustment,
+        pl4: pl1Price - pl4Adjustment,
+      };
+    }
   }
-}
 
-  // Get product by ID with variants
+  // Search products (for staff)
+  static async searchProducts(query: string, limit: number = 20) {
+    try {
+      const searchTerm = query.trim();
+
+      if (!searchTerm) {
+        return [];
+      }
+
+      // Escape regex special characters so user input is treated as plain text
+      const escapedQuery = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+      // Case-insensitive partial search across product name,
+      // Tamil name, SKU and brand.
+      const products = await Product.find({
+        isActive: true,
+        $or: [
+          { englishName: { $regex: escapedQuery, $options: "i" } },
+          { tamilName: { $regex: escapedQuery, $options: "i" } },
+          { sku: { $regex: escapedQuery, $options: "i" } },
+          { brand: { $regex: escapedQuery, $options: "i" } },
+        ],
+      })
+        .select({ purchasePrice: 0 }) // Hide purchase price from staff
+        .sort({ englishName: 1 })
+        .limit(limit)
+        .lean();
+
+      return products;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  // Get product by ID
   static async getProductDetails(productId: string, isAdmin: boolean = false) {
     try {
       const product = await Product.findById(productId)
@@ -64,98 +89,13 @@ export class ProductService {
         throw new AppError(404, "Product not found");
       }
 
-      const variants = await ProductVariant.find({
-        productId,
-        isActive: true,
-      });
-
-      // Hide purchase cost from non-admin
-      const processedVariants = isAdmin
-        ? variants
-        : variants.map((v: any) => {
-            const obj = v.toObject();
-            delete obj.purchaseCost;
-            return obj;
-          });
-
-      return {
-        ...product.toObject(),
-        variants: processedVariants,
-      };
-    } catch (error) {
-      throw error;
-    }
-  }
-
-  // Update variant prices (admin only)
-  static async updateVariantPrices(
-    variantId: string,
-    userId: string,
-    {
-      purchaseCost,
-      b2bPrice,
-      b2cPrice,
-    }: {
-      purchaseCost?: number;
-      b2bPrice?: number;
-      b2cPrice?: number;
-    }
-  ): Promise<any> {
-    try {
-      const variant = await ProductVariant.findById(variantId);
-
-      if (!variant) {
-        throw new AppError(404, "Variant not found");
+      // Hide purchase price from non-admin
+      const productObj = product.toObject();
+      if (!isAdmin) {
+        delete (productObj as any).purchasePrice;
       }
 
-      // Record price history before update
-      await PriceHistory.create({
-        productVariantId: variantId,
-        purchaseCost:
-  purchaseCost !== undefined
-    ? purchaseCost
-    : variant.purchaseCost,
-
-b2bPrice:
-  b2bPrice !== undefined
-    ? b2bPrice
-    : variant.b2bPrice,
-
-b2cPrice:
-  b2cPrice !== undefined
-    ? b2cPrice
-    : variant.b2cPrice,
-        changedBy: userId,
-      });
-
-      // Update variant
-      if (purchaseCost !== undefined) variant.purchaseCost = purchaseCost;
-      if (b2bPrice !== undefined) variant.b2bPrice = b2bPrice;
-      if (b2cPrice !== undefined) variant.b2cPrice = b2cPrice;
-
-      await variant.save();
-
-      // Notify all connected staff about price update
-      notifyPriceUpdate(variantId, {
-        b2bPrice: variant.b2bPrice,
-        b2cPrice: variant.b2cPrice,
-      });
-
-      return variant;
-    } catch (error) {
-      throw error;
-    }
-  }
-
-  // Get price history (admin only)
-  static async getPriceHistory(productVariantId: string, limit: number = 20): Promise<any> {
-    try {
-      const history = await PriceHistory.find({ productVariantId })
-        .sort({ changedAt: -1 })
-        .limit(limit)
-        .populate("changedBy", "name email");
-
-      return history;
+      return productObj;
     } catch (error) {
       throw error;
     }
@@ -188,21 +128,8 @@ b2cPrice:
         .skip(skip)
         .limit(limit);
 
-      // Enrich with variant count
-      const enriched = await Promise.all(
-        products.map(async (product: any) => {
-          const variantCount = await ProductVariant.countDocuments({
-            productId: product._id,
-          });
-          return {
-            ...product.toObject(),
-            variantCount,
-          };
-        })
-      );
-
       return {
-        data: enriched,
+        data: products,
         pagination: {
           total,
           page,
@@ -215,20 +142,31 @@ b2cPrice:
     }
   }
 
-  // Create product
+  // Create product with pricing
   static async createProduct(data: {
     englishName: string;
     tamilName?: string;
     categoryId: string;
     subcategoryId?: string;
     sku?: string;
+    giftCode?: string;
     brand?: string;
     description?: string;
     image?: string;
+    purchasePrice: number;
+    pricing: {
+      fixed: boolean;
+      calculationType: "percentage" | "value";
+      pl1: { price: number; remarks?: string };
+      pl2: { price: number; adjustment: number; remarks?: string };
+      pl3: { price: number; adjustment: number; remarks?: string };
+      pl4: { price: number; adjustment: number; remarks?: string };
+    };
   }): Promise<any> {
     try {
       // Verify category exists
-      const category = await (Product as any).db.model("Category").findById(data.categoryId);
+      const Category = (Product as any).db.model("Category");
+      const category = await Category.findById(data.categoryId);
       if (!category) {
         throw new AppError(404, "Category not found");
       }
@@ -241,21 +179,66 @@ b2cPrice:
         }
       }
 
+      // Validate prices based on fixed mode
+      let pl2Price = data.pricing.pl2.price;
+      let pl3Price = data.pricing.pl3.price;
+      let pl4Price = data.pricing.pl4.price;
+
+      if (!data.pricing.fixed) {
+        // Validate and calculate based on calculation type
+        const calculated = this.calculatePrices(
+          data.pricing.pl1.price,
+          data.pricing.pl2.adjustment,
+          data.pricing.pl3.adjustment,
+          data.pricing.pl4.adjustment,
+          false,
+          data.pricing.calculationType
+        );
+        pl2Price = calculated.pl2;
+        pl3Price = calculated.pl3;
+        pl4Price = calculated.pl4;
+      }
+
       const product = new Product({
         englishName: data.englishName.trim(),
         tamilName: data.tamilName?.trim() || "",
         category: data.categoryId,
         subcategory: data.subcategoryId || null,
         sku: data.sku?.trim() || undefined,
+        giftCode: data.giftCode?.trim() || "",
         brand: data.brand?.trim() || "",
         description: data.description?.trim() || "",
         image: data.image || "",
+        purchasePrice: data.purchasePrice,
+        pricing: {
+          fixed: data.pricing.fixed,
+          calculationType: data.pricing.calculationType,
+          pl1: {
+            price: data.pricing.pl1.price,
+            remarks: data.pricing.pl1.remarks || "",
+          },
+          pl2: {
+            price: pl2Price,
+            adjustment: data.pricing.pl2.adjustment,
+            remarks: data.pricing.pl2.remarks || "",
+          },
+          pl3: {
+            price: pl3Price,
+            adjustment: data.pricing.pl3.adjustment,
+            remarks: data.pricing.pl3.remarks || "",
+          },
+          pl4: {
+            price: pl4Price,
+            adjustment: data.pricing.pl4.adjustment,
+            remarks: data.pricing.pl4.remarks || "",
+          },
+        },
         isActive: true,
       });
 
       await product.save();
       await product.populate(["category", "subcategory"]);
-      return product; 
+      return product;
     } catch (error) {
       throw error;
     }
@@ -270,9 +253,19 @@ b2cPrice:
       categoryId?: string;
       subcategoryId?: string;
       sku?: string;
+      giftCode?: string;
       brand?: string;
       description?: string;
       image?: string;
+      purchasePrice?: number;
+      pricing?: {
+        fixed: boolean;
+        calculationType: "percentage" | "value";
+        pl1: { price: number; remarks?: string };
+        pl2: { price: number; adjustment: number; remarks?: string };
+        pl3: { price: number; adjustment: number; remarks?: string };
+        pl4: { price: number; adjustment: number; remarks?: string };
+      };
     }
   ): Promise<any> {
     try {
@@ -299,14 +292,62 @@ b2cPrice:
       if (data.categoryId) product.category = data.categoryId;
       if (data.subcategoryId !== undefined) product.subcategory = data.subcategoryId;
       if (data.sku !== undefined) product.sku = data.sku?.trim() || "";
+      if (data.giftCode !== undefined) product.giftCode = data.giftCode?.trim() || "";
       if (data.brand !== undefined) product.brand = data.brand?.trim() || "";
       if (data.description !== undefined) product.description = data.description?.trim() || "";
       if (data.image !== undefined) product.image = data.image || "";
+      if (data.purchasePrice !== undefined) product.purchasePrice = data.purchasePrice;
+
+      // Update pricing
+      if (data.pricing) {
+        let pl2Price = data.pricing.pl2.price;
+        let pl3Price = data.pricing.pl3.price;
+        let pl4Price = data.pricing.pl4.price;
+
+        if (!data.pricing.fixed) {
+          // Validate and calculate based on calculation type
+          const calculated = this.calculatePrices(
+            data.pricing.pl1.price,
+            data.pricing.pl2.adjustment,
+            data.pricing.pl3.adjustment,
+            data.pricing.pl4.adjustment,
+            false,
+            data.pricing.calculationType
+          );
+          pl2Price = calculated.pl2;
+          pl3Price = calculated.pl3;
+          pl4Price = calculated.pl4;
+        }
+
+        product.pricing = {
+          fixed: data.pricing.fixed,
+          calculationType: data.pricing.calculationType,
+          pl1: {
+            price: data.pricing.pl1.price,
+            remarks: data.pricing.pl1.remarks || "",
+          },
+          pl2: {
+            price: pl2Price,
+            adjustment: data.pricing.pl2.adjustment,
+            remarks: data.pricing.pl2.remarks || "",
+          },
+          pl3: {
+            price: pl3Price,
+            adjustment: data.pricing.pl3.adjustment,
+            remarks: data.pricing.pl3.remarks || "",
+          },
+          pl4: {
+            price: pl4Price,
+            adjustment: data.pricing.pl4.adjustment,
+            remarks: data.pricing.pl4.remarks || "",
+          },
+        };
+      }
 
       await product.save();
       await product.populate(["category", "subcategory"]);
-      return product;    
-} catch (error) {
+      return product;
+    } catch (error) {
       throw error;
     }
   }
@@ -329,131 +370,7 @@ b2cPrice:
     }
   }
 
-  // VARIANT MANAGEMENT METHODS
-
-  // Get product variants
-  static async getProductVariants(productId: string): Promise<any> {
-    try {
-      const product = await Product.findById(productId);
-
-      if (!product) {
-        throw new AppError(404, "Product not found");
-      }
-
-      const variants = await ProductVariant.find({ productId }).sort({
-        packSize: 1,
-      });
-
-      return variants;
-    } catch (error) {
-      throw error;
-    }
-  }
-
-  // Create variant
-  static async createVariant(
-  productId: string,
-  data: {
-    packSize: string;
-    unit: string;
-    purchaseCost: number;
-    b2bPrice: number;
-    b2cPrice: number;
-  }
-): Promise<any> {
-  try {
-    const product = await Product.findById(productId);
-
-    if (!product) {
-      throw new AppError(404, "Product not found");
-    }
-
-    const packSize = data.packSize.trim();
-    const unit = data.unit.toUpperCase();
-
-    // Prevent duplicate variant for the same product
-    const existingVariant = await ProductVariant.findOne({
-      productId,
-      packSize,
-      unit,
-    });
-
-    if (existingVariant) {
-      throw new AppError(
-        409,
-        `A variant with pack size ${packSize} ${unit} already exists for this product`
-      );
-    }
-
-    const variant = new ProductVariant({
-      productId,
-      packSize,
-      unit,
-      purchaseCost: data.purchaseCost,
-      b2bPrice: data.b2bPrice,
-      b2cPrice: data.b2cPrice,
-      isActive: true,
-    });
-
-    await variant.save();
-
-    return variant;
-  } catch (error) {
-    throw error;
-  }
-}
-
-  // Update variant
-  static async updateVariant(
-    variantId: string,
-    data: {
-      packSize?: string;
-      unit?: string;
-      purchaseCost?: number;
-      b2bPrice?: number;
-      b2cPrice?: number;
-    }
-  ): Promise<any> {
-    try {
-      const variant = await ProductVariant.findById(variantId);
-
-      if (!variant) {
-        throw new AppError(404, "Variant not found");
-      }
-
-      // Update fields (use explicit undefined checks for numeric fields)
-      if (data.packSize !== undefined) variant.packSize = data.packSize.trim();
-      if (data.unit !== undefined) variant.unit = data.unit.toUpperCase();
-      if (data.purchaseCost !== undefined) variant.purchaseCost = data.purchaseCost;
-      if (data.b2bPrice !== undefined) variant.b2bPrice = data.b2bPrice;
-      if (data.b2cPrice !== undefined) variant.b2cPrice = data.b2cPrice;
-
-      await variant.save();
-      return variant;
-    } catch (error) {
-      throw error;
-    }
-  }
-
-  // Toggle variant active status
-  static async toggleVariantStatus(variantId: string): Promise<any> {
-    try {
-      const variant = await ProductVariant.findById(variantId);
-
-      if (!variant) {
-        throw new AppError(404, "Variant not found");
-      }
-
-      variant.isActive = !variant.isActive;
-      await variant.save();
-
-      return variant;
-    } catch (error) {
-      throw error;
-    }
-  }
-
-  // Permanent delete - cascade delete product, variants, and price history
+  // Permanent delete product
   static async deleteProduct(productId: string): Promise<void> {
     try {
       const product = await Product.findById(productId);
@@ -462,24 +379,11 @@ b2cPrice:
         throw new AppError(404, "Product not found");
       }
 
-      // Get all variant IDs for this product
-      const variants = await ProductVariant.find({ productId });
-      const variantIds = variants.map((v: any) => v._id);
-
-      // Delete all price history for these variants
-      if (variantIds.length > 0) {
-        await PriceHistory.deleteMany({
-          productVariantId: { $in: variantIds },
-        });
-      }
-
-      // Delete all variants for this product
-      await ProductVariant.deleteMany({ productId });
-
-      // Delete the product
+      // Delete the product (variants are no longer created with new products)
       await Product.deleteOne({ _id: productId });
     } catch (error) {
       throw error;
     }
   }
+
 }

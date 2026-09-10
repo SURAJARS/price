@@ -157,15 +157,44 @@ class ApiClient {
     categoryId: string;
     subcategoryId?: string;
     sku?: string;
+    giftCode?: string;
     brand?: string;
     description?: string;
     image?: string;
+    purchasePrice: number;
+    pricing: {
+      fixed: boolean;
+      calculationType: "percentage" | "value";
+      pl1: { price: number; remarks?: string };
+      pl2: { price: number; adjustment: number; remarks?: string };
+      pl3: { price: number; adjustment: number; remarks?: string };
+      pl4: { price: number; adjustment: number; remarks?: string };
+    };
   }) {
     const response = await this.axiosInstance.post<ApiResponse>("/products", data);
     return response.data;
   }
 
-  async updateProduct(productId: string, data: any) {
+  async updateProduct(productId: string, data: {
+    englishName?: string;
+    tamilName?: string;
+    categoryId?: string;
+    subcategoryId?: string;
+    sku?: string;
+    giftCode?: string;
+    brand?: string;
+    description?: string;
+    image?: string;
+    purchasePrice?: number;
+    pricing?: {
+      fixed: boolean;
+      calculationType: "percentage" | "value";
+      pl1: { price: number; remarks?: string };
+      pl2: { price: number; adjustment: number; remarks?: string };
+      pl3: { price: number; adjustment: number; remarks?: string };
+      pl4: { price: number; adjustment: number; remarks?: string };
+    };
+  }) {
     const response = await this.axiosInstance.patch<ApiResponse>(
       `/products/${productId}`,
       data
@@ -183,67 +212,6 @@ class ApiClient {
   async deleteProduct(productId: string) {
     const response = await this.axiosInstance.delete<ApiResponse>(
       `/products/${productId}`
-    );
-    return response.data;
-  }
-
-  // Variant endpoints
-  async getProductVariants(productId: string) {
-    const response = await this.axiosInstance.get<ApiResponse>(
-      `/products/${productId}/variants`
-    );
-    return response.data;
-  }
-
-  async createVariant(productId: string, data: {
-    packSize: string;
-    unit: string;
-    purchaseCost: number;
-    b2bPrice: number;
-    b2cPrice: number;
-  }) {
-    const response = await this.axiosInstance.post<ApiResponse>(
-      `/products/${productId}/variants`,
-      data
-    );
-    return response.data;
-  }
-
-  async updateVariant(productId: string, variantId: string, data: any) {
-    const response = await this.axiosInstance.patch<ApiResponse>(
-      `/products/${productId}/variants/${variantId}`,
-      data
-    );
-    return response.data;
-  }
-
-  async toggleVariantStatus(productId: string, variantId: string) {
-    const response = await this.axiosInstance.patch<ApiResponse>(
-      `/products/${productId}/variants/${variantId}/status`
-    );
-    return response.data;
-  }
-
-  async updateVariantPrices(
-    productId: string,
-    variantId: string,
-    prices: {
-      purchaseCost?: number;
-      b2bPrice?: number;
-      b2cPrice?: number;
-    }
-  ) {
-    const response = await this.axiosInstance.patch<ApiResponse>(
-      `/products/${productId}/variants/${variantId}/prices`,
-      prices
-    );
-    return response.data;
-  }
-
-  async getPriceHistory(productId: string, variantId: string, limit: number = 20) {
-    const response = await this.axiosInstance.get<ApiResponse>(
-      `/products/${productId}/variants/${variantId}/history`,
-      { params: { limit } }
     );
     return response.data;
   }
@@ -280,18 +248,17 @@ class ApiClient {
   }
 
   // Image upload
-  // Image upload
-async uploadProductImage(productId: string, file: File) {
-  const formData = new FormData();
-  formData.append("image", file);
+  async uploadProductImage(productId: string, file: File) {
+    const formData = new FormData();
+    formData.append("image", file);
 
-  const response = await this.axiosInstance.post<ApiResponse>(
-    `/products/${productId}/upload-image`,
-    formData
-  );
+    const response = await this.axiosInstance.post<ApiResponse>(
+      `/products/${productId}/upload-image`,
+      formData
+    );
 
-  return response.data;
-}
+    return response.data;
+  }
 }
 
 export const apiClient = new ApiClient();

@@ -17,8 +17,13 @@ interface Product {
   subcategory?: { _id: string; name: string };
   sku?: string;
   brand?: string;
+  pricing: {
+    pl1: { price: number };
+    pl2: { price: number };
+    pl3: { price: number };
+    pl4: { price: number };
+  };
   isActive: boolean;
-  variantCount: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -148,7 +153,7 @@ export default function ProductsPage() {
               </h1>
 
               <p className="text-gray-600 dark:text-gray-400 text-sm mt-1">
-                {t("products.manageDescription", language)}
+                Manage your grocery products and pricing
               </p>
             </div>
 
@@ -246,11 +251,11 @@ export default function ProductsPage() {
                     </th>
 
                     <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900 dark:text-white">
-                      {t("products.variants", language)}
+                      {t("products.sku", language)}
                     </th>
 
                     <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900 dark:text-white">
-                      {t("products.sku", language)}
+                      PL1 – B2C Retail
                     </th>
 
                     <th className="px-4 py-3 text-center text-sm font-semibold text-gray-900 dark:text-white">
@@ -299,14 +304,14 @@ export default function ProductsPage() {
                           {product.category?.name}
                         </td>
 
-                        {/* Variants */}
-                        <td className="px-4 py-3 text-gray-900 dark:text-white">
-                          {product.variantCount}
-                        </td>
-
                         {/* SKU */}
                         <td className="px-4 py-3 text-gray-900 dark:text-white">
                           {product.sku || "-"}
+                        </td>
+
+                        {/* PL1 Price */}
+                        <td className="px-4 py-3 text-gray-900 dark:text-white">
+                          ₹{product.pricing?.pl1?.price?.toFixed(2) || "-"}
                         </td>
 
                         {/* Status */}
@@ -341,20 +346,6 @@ export default function ProductsPage() {
                               className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 text-sm"
                             >
                               {t("products.edit", language)}
-                            </Link>
-
-                            <Link
-                              href={`/admin/products/${product._id}/pricing`}
-                              className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 text-sm"
-                            >
-                              {t("products.pricing", language)}
-                            </Link>
-
-                            <Link
-                              href={`/admin/products/${product._id}/history`}
-                              className="text-purple-600 hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-300 text-sm"
-                            >
-                              {t("products.history", language)}
                             </Link>
                           </div>
                         </td>

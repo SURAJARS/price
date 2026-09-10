@@ -17,14 +17,28 @@ interface Subcategory {
   name: string;
 }
 
-interface Variant {
-  _id: string;
-  packSize: number;
-  unit: string;
-  purchaseCost: number;
-  b2bPrice: number;
-  b2cPrice: number;
-  isActive: boolean;
+interface PricingData {
+  fixed: boolean;
+  calculationType: "percentage" | "value";
+  pl1: {
+    price: number;
+    remarks: string;
+  };
+  pl2: {
+    price: number;
+    adjustment: number;
+    remarks: string;
+  };
+  pl3: {
+    price: number;
+    adjustment: number;
+    remarks: string;
+  };
+  pl4: {
+    price: number;
+    adjustment: number;
+    remarks: string;
+  };
 }
 
 interface Product {
@@ -37,6 +51,8 @@ interface Product {
   brand?: string;
   description?: string;
   image?: string;
+  purchasePrice: number;
+  pricing: PricingData;
   isActive: boolean;
 }
 
@@ -49,12 +65,10 @@ export default function EditProductPage() {
   const [product, setProduct] = useState<Product | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
-  const [variants, setVariants] = useState<Variant[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [showAddVariant, setShowAddVariant] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
 
@@ -64,16 +78,19 @@ export default function EditProductPage() {
     categoryId: "",
     subcategoryId: "",
     sku: "",
+    giftCode: "",
     brand: "",
     description: "",
+    purchasePrice: "",
   });
 
-  const [variantForm, setVariantForm] = useState({
-    packSize: "",
-    unit: "KG",
-    purchaseCost: "",
-    b2bPrice: "",
-    b2cPrice: "",
+  const [pricing, setPricing] = useState<PricingData>({
+    fixed: true,
+    calculationType: "percentage",
+    pl1: { price: 0, remarks: "" },
+    pl2: { price: 0, adjustment: 0, remarks: "" },
+    pl3: { price: 0, adjustment: 0, remarks: "" },
+    pl4: { price: 0, adjustment: 0, remarks: "" },
   });
 
   // Check authentication
@@ -83,21 +100,31 @@ export default function EditProductPage() {
     }
   }, [isAuthenticated, isOwner, router]);
 
-  // Load data
+  // Load product data
   useEffect(() => {
-    loadData();
+    loadProduct();
   }, [productId]);
 
-  const loadData = async () => {
+  // Load categories when component mounts
+  useEffect(() => {
+    loadCategories();
+  }, []);
+
+  // Load subcategories when category changes
+  useEffect(() => {
+    if (form.categoryId) {
+      loadSubcategories(form.categoryId);
+    } else {
+      setSubcategories([]);
+    }
+  }, [form.categoryId]);
+
+  const loadProduct = async () => {
     try {
       setLoading(true);
-      const [productRes, categoriesRes, variantsRes] = await Promise.all([
-        apiClient.getProductDetails(productId),
-        apiClient.getCategories(),
-        apiClient.getProductVariants(productId),
-      ]);
+      const res = await apiClient.getProductDetails(productId);
+      const prod = res.data;
 
-      const prod = productRes.data;
       setProduct(prod);
       setForm({
         englishName: prod.englishName,
@@ -105,25 +132,44 @@ export default function EditProductPage() {
         categoryId: prod.category?._id || "",
         subcategoryId: prod.subcategory?._id || "",
         sku: prod.sku || "",
+        giftCode: prod.giftCode || "",
         brand: prod.brand || "",
         description: prod.description || "",
+        purchasePrice: prod.purchasePrice.toString(),
       });
+
+      setPricing(prod.pricing);
 
       if (prod.image) {
         setImagePreview(prod.image);
       }
 
-      setVariants(variantsRes.data || []);
-      setCategories(categoriesRes.data || []);
-
+      // Load subcategories if category exists
       if (prod.category?._id) {
-        const subcRes = await apiClient.getSubcategories(prod.category._id);
-        setSubcategories(subcRes.data || []);
+        await loadSubcategories(prod.category._id);
       }
     } catch (err: any) {
       setError(err.response?.data?.message || "Failed to load product");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadCategories = async () => {
+    try {
+      const res = await apiClient.getCategories();
+      setCategories(res.data || []);
+    } catch (err) {
+      console.error("Failed to load categories");
+    }
+  };
+
+  const loadSubcategories = async (categoryId: string) => {
+    try {
+      const res = await apiClient.getSubcategories(categoryId);
+      setSubcategories(res.data || []);
+    } catch (err) {
+      console.error("Failed to load subcategories");
     }
   };
 
@@ -139,24 +185,14 @@ export default function EditProductPage() {
     }));
   };
 
-  const handleCategoryChange = async (
-    e: React.ChangeEvent<HTMLSelectElement>,
-  ) => {
-    const categoryId = e.target.value;
-    setForm((prev) => ({
+  const handlePricingChange = (field: string, subField: string, value: any) => {
+    setPricing((prev) => ({
       ...prev,
-      categoryId,
-      subcategoryId: "",
+      [field]: {
+        ...(prev as any)[field],
+        [subField]: value,
+      },
     }));
-
-    if (categoryId) {
-      try {
-        const res = await apiClient.getSubcategories(categoryId);
-        setSubcategories(res.data || []);
-      } catch (err) {
-        console.error("Failed to load subcategories");
-      }
-    }
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -179,9 +215,8 @@ export default function EditProductPage() {
       setError("");
       await apiClient.uploadProductImage(productId, file);
       setSuccess("Image uploaded successfully");
-      // Reload product to get updated image
       await new Promise((resolve) => setTimeout(resolve, 500));
-      loadData();
+      loadProduct();
     } catch (err: any) {
       setError(err.response?.data?.message || "Failed to upload image");
     } finally {
@@ -193,73 +228,13 @@ export default function EditProductPage() {
     try {
       setUploading(true);
       setError("");
-      await apiClient.updateProduct(productId, { image: null });
+      await apiClient.updateProduct(productId, { image: "" });
       setImagePreview(null);
       setSuccess("Image removed successfully");
     } catch (err: any) {
       setError("Failed to remove image");
     } finally {
       setUploading(false);
-    }
-  };
-
-  const handleVariantInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
-  ) => {
-    const { name, value } = e.target;
-    setVariantForm((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-  };
-
-  const handleAddVariant = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      setError("");
-
-      if (
-        !variantForm.packSize ||
-        !variantForm.unit ||
-        !variantForm.purchaseCost ||
-        !variantForm.b2bPrice ||
-        !variantForm.b2cPrice
-      ) {
-        setError("All variant fields are required");
-        return;
-      }
-
-      await apiClient.createVariant(productId, {
-        packSize: variantForm.packSize,
-        unit: variantForm.unit,
-        purchaseCost: Number(variantForm.purchaseCost),
-        b2bPrice: Number(variantForm.b2bPrice),
-        b2cPrice: Number(variantForm.b2cPrice),
-      });
-
-      setSuccess("Variant added successfully");
-      setVariantForm({
-        packSize: "",
-        unit: "KG",
-        purchaseCost: "",
-        b2bPrice: "",
-        b2cPrice: "",
-      });
-      setShowAddVariant(false);
-      await loadData();
-    } catch (err: any) {
-      setError(err.response?.data?.message || "Failed to add variant");
-    }
-  };
-
-  const handleToggleVariantStatus = async (variantId: string) => {
-    try {
-      setError("");
-      await apiClient.toggleVariantStatus(productId, variantId);
-      setSuccess("Variant status updated");
-      await loadData();
-    } catch (err: any) {
-      setError("Failed to update variant status");
     }
   };
 
@@ -287,14 +262,23 @@ export default function EditProductPage() {
         return;
       }
 
+      const purchasePrice = parseFloat(form.purchasePrice) || 0;
+      if (purchasePrice <= 0) {
+        setError("Purchase price must be greater than 0");
+        return;
+      }
+
       await apiClient.updateProduct(productId, {
         englishName: form.englishName,
         tamilName: form.tamilName,
         categoryId: form.categoryId,
         subcategoryId: form.subcategoryId,
         sku: form.sku,
+        giftCode: form.giftCode,
         brand: form.brand,
         description: form.description,
+        purchasePrice,
+        pricing,
       });
 
       setSuccess("Product updated successfully");
@@ -308,41 +292,44 @@ export default function EditProductPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-screen bg-gray-50 dark:bg-slate-950">
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-          <p className="mt-4 text-gray-600">Loading product...</p>
+          <p className="mt-4 text-gray-600 dark:text-gray-400">
+            Loading product...
+          </p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-slate-950">
       <Navigation />
+
       <div className="p-4 md:p-6">
         <div className="max-w-5xl mx-auto">
           {/* Header */}
           <div className="mb-6">
             <Link
               href="/admin/products"
-              className="text-blue-600 hover:text-blue-800 text-sm mb-4 inline-block"
+              className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 text-sm mb-4 inline-block"
             >
               ← Back to Products
             </Link>
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
               Edit Product
             </h1>
           </div>
 
           {/* Messages */}
           {error && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
+            <div className="mb-4 p-3 bg-red-50 dark:bg-red-900 border border-red-200 dark:border-red-700 text-red-700 dark:text-red-200 rounded-lg text-sm">
               {error}
             </div>
           )}
           {success && (
-            <div className="mb-4 p-3 bg-green-50 border border-green-200 text-green-700 rounded-lg text-sm">
+            <div className="mb-4 p-3 bg-green-50 dark:bg-green-900 border border-green-200 dark:border-green-700 text-green-700 dark:text-green-200 rounded-lg text-sm">
               {success}
             </div>
           )}
@@ -350,15 +337,15 @@ export default function EditProductPage() {
           {/* Product Info Form */}
           <form
             onSubmit={handleSubmit}
-            className="bg-white rounded-lg shadow p-6 mb-6"
+            className="bg-white dark:bg-slate-800 rounded-lg shadow p-6 mb-6"
           >
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
               Basic Information
             </h2>
 
             {/* Image Section */}
-            <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-              <h3 className="text-sm font-medium text-gray-700 mb-3">
+            <div className="mb-6 p-4 bg-gray-50 dark:bg-slate-700 rounded-lg">
+              <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
                 Product Image
               </h3>
               <div className="flex flex-col md:flex-row gap-4">
@@ -368,12 +355,12 @@ export default function EditProductPage() {
                       <img
                         src={imagePreview}
                         alt="Preview"
-                        className="w-32 h-32 object-cover rounded-lg border border-gray-300"
+                        className="w-32 h-32 object-cover rounded-lg border border-gray-300 dark:border-slate-600"
                       />
                     </div>
                   )}
                   <div className="flex gap-2">
-                    <label className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition cursor-pointer text-center text-sm">
+                    <label className="flex-1 px-4 py-2 bg-blue-600 dark:bg-blue-700 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 transition cursor-pointer text-center text-sm">
                       {imagePreview ? "Replace Image" : "Upload Image"}
                       <input
                         type="file"
@@ -388,7 +375,7 @@ export default function EditProductPage() {
                         type="button"
                         onClick={handleRemoveImage}
                         disabled={uploading}
-                        className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition text-sm"
+                        className="px-4 py-2 bg-red-600 dark:bg-red-700 text-white rounded-lg hover:bg-red-700 dark:hover:bg-red-600 transition text-sm"
                       >
                         Remove
                       </button>
@@ -398,9 +385,10 @@ export default function EditProductPage() {
               </div>
             </div>
 
+            {/* Product Fields */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   English Name *
                 </label>
                 <input
@@ -408,13 +396,13 @@ export default function EditProductPage() {
                   name="englishName"
                   value={form.englishName}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white bg-white dark:bg-slate-700"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Tamil Name
                 </label>
                 <input
@@ -422,19 +410,19 @@ export default function EditProductPage() {
                   name="tamilName"
                   value={form.tamilName}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white bg-white dark:bg-slate-700"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Category *
                 </label>
                 <select
                   name="categoryId"
                   value={form.categoryId}
-                  onChange={handleCategoryChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white bg-white dark:bg-slate-700"
                   required
                 >
                   <option value="">Select Category</option>
@@ -447,14 +435,14 @@ export default function EditProductPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Subcategory
                 </label>
                 <select
                   name="subcategoryId"
                   value={form.subcategoryId}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white bg-white dark:bg-slate-700"
                 >
                   <option value="">None</option>
                   {subcategories.map((sub) => (
@@ -466,7 +454,7 @@ export default function EditProductPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   SKU
                 </label>
                 <input
@@ -474,12 +462,25 @@ export default function EditProductPage() {
                   name="sku"
                   value={form.sku}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white bg-white dark:bg-slate-700"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Gift Code
+                </label>
+                <input
+                  type="text"
+                  name="giftCode"
+                  value={form.giftCode}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white bg-white dark:bg-slate-700"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Brand
                 </label>
                 <input
@@ -487,22 +488,318 @@ export default function EditProductPage() {
                   name="brand"
                   value={form.brand}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white bg-white dark:bg-slate-700"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Purchase Price (₹) *
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  name="purchasePrice"
+                  value={form.purchasePrice}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white bg-white dark:bg-slate-700"
+                  required
                 />
               </div>
             </div>
 
             <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Description
               </label>
               <textarea
                 name="description"
                 value={form.description}
                 onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white bg-white dark:bg-slate-700"
                 rows={3}
               />
+            </div>
+
+            {/* Pricing Section */}
+            <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900 rounded-lg">
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">
+                Pricing Configuration
+              </h3>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Pricing Mode
+                  </label>
+                  <select
+                    value={pricing.fixed ? "fixed" : "auto"}
+                    onChange={(e) =>
+                      setPricing((prev) => ({
+                        ...prev,
+                        fixed: e.target.value === "fixed",
+                      }))
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white bg-white dark:bg-slate-700"
+                  >
+                    <option value="fixed">Fixed (Manual Prices)</option>
+                    <option value="auto">Auto (Calculate from PL1)</option>
+                  </select>
+                </div>
+
+                {!pricing.fixed && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Calculation Type
+                    </label>
+                    <select
+                      value={pricing.calculationType}
+                      onChange={(e) =>
+                        setPricing((prev) => ({
+                          ...prev,
+                          calculationType: e.target.value as any,
+                        }))
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white bg-white dark:bg-slate-700"
+                    >
+                      <option value="percentage">Percentage (%)</option>
+                      <option value="value">Value (₹)</option>
+                    </select>
+                  </div>
+                )}
+              </div>
+
+              {/* Price Levels */}
+              <div className="space-y-4">
+                {/* PL1 */}
+                <div className="p-3 bg-white dark:bg-slate-800 rounded border border-gray-300 dark:border-slate-600">
+                  <h4 className="font-medium text-gray-900 dark:text-white mb-2">
+                    PL1 – B2C Retail
+                  </h4>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Price (₹)
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={pricing.pl1.price}
+                        onChange={(e) =>
+                          handlePricingChange(
+                            "pl1",
+                            "price",
+                            parseFloat(e.target.value) || 0,
+                          )
+                        }
+                        className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white bg-white dark:bg-slate-700"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Remarks
+                      </label>
+                      <input
+                        type="text"
+                        value={pricing.pl1.remarks}
+                        onChange={(e) =>
+                          handlePricingChange("pl1", "remarks", e.target.value)
+                        }
+                        className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white bg-white dark:bg-slate-700"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* PL2 */}
+                <div className="p-3 bg-white dark:bg-slate-800 rounded border border-gray-300 dark:border-slate-600">
+                  <h4 className="font-medium text-gray-900 dark:text-white mb-2">
+                    PL2 – B2C Bulk
+                  </h4>
+                  <div className="grid grid-cols-3 gap-2">
+                    {!pricing.fixed && (
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          {pricing.calculationType === "percentage"
+                            ? "Discount (%)"
+                            : "Reduction (₹)"}
+                        </label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={pricing.pl2.adjustment}
+                          onChange={(e) =>
+                            handlePricingChange(
+                              "pl2",
+                              "adjustment",
+                              parseFloat(e.target.value) || 0,
+                            )
+                          }
+                          className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white bg-white dark:bg-slate-700"
+                        />
+                      </div>
+                    )}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Price (₹)
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={pricing.pl2.price}
+                        onChange={(e) =>
+                          handlePricingChange(
+                            "pl2",
+                            "price",
+                            parseFloat(e.target.value) || 0,
+                          )
+                        }
+                        disabled={!pricing.fixed}
+                        className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white bg-white dark:bg-slate-700 disabled:opacity-50"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Remarks
+                      </label>
+                      <input
+                        type="text"
+                        value={pricing.pl2.remarks}
+                        onChange={(e) =>
+                          handlePricingChange("pl2", "remarks", e.target.value)
+                        }
+                        className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white bg-white dark:bg-slate-700"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* PL3 */}
+                <div className="p-3 bg-white dark:bg-slate-800 rounded border border-gray-300 dark:border-slate-600">
+                  <h4 className="font-medium text-gray-900 dark:text-white mb-2">
+                    PL3 – B2B Retail
+                  </h4>
+                  <div className="grid grid-cols-3 gap-2">
+                    {!pricing.fixed && (
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          {pricing.calculationType === "percentage"
+                            ? "Discount (%)"
+                            : "Reduction (₹)"}
+                        </label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={pricing.pl3.adjustment}
+                          onChange={(e) =>
+                            handlePricingChange(
+                              "pl3",
+                              "adjustment",
+                              parseFloat(e.target.value) || 0,
+                            )
+                          }
+                          className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white bg-white dark:bg-slate-700"
+                        />
+                      </div>
+                    )}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Price (₹)
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={pricing.pl3.price}
+                        onChange={(e) =>
+                          handlePricingChange(
+                            "pl3",
+                            "price",
+                            parseFloat(e.target.value) || 0,
+                          )
+                        }
+                        disabled={!pricing.fixed}
+                        className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white bg-white dark:bg-slate-700 disabled:opacity-50"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Remarks
+                      </label>
+                      <input
+                        type="text"
+                        value={pricing.pl3.remarks}
+                        onChange={(e) =>
+                          handlePricingChange("pl3", "remarks", e.target.value)
+                        }
+                        className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white bg-white dark:bg-slate-700"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* PL4 */}
+                <div className="p-3 bg-white dark:bg-slate-800 rounded border border-gray-300 dark:border-slate-600">
+                  <h4 className="font-medium text-gray-900 dark:text-white mb-2">
+                    PL4 – B2B Wholesale
+                  </h4>
+                  <div className="grid grid-cols-3 gap-2">
+                    {!pricing.fixed && (
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          {pricing.calculationType === "percentage"
+                            ? "Discount (%)"
+                            : "Reduction (₹)"}
+                        </label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={pricing.pl4.adjustment}
+                          onChange={(e) =>
+                            handlePricingChange(
+                              "pl4",
+                              "adjustment",
+                              parseFloat(e.target.value) || 0,
+                            )
+                          }
+                          className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white bg-white dark:bg-slate-700"
+                        />
+                      </div>
+                    )}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Price (₹)
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={pricing.pl4.price}
+                        onChange={(e) =>
+                          handlePricingChange(
+                            "pl4",
+                            "price",
+                            parseFloat(e.target.value) || 0,
+                          )
+                        }
+                        disabled={!pricing.fixed}
+                        className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white bg-white dark:bg-slate-700 disabled:opacity-50"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Remarks
+                      </label>
+                      <input
+                        type="text"
+                        value={pricing.pl4.remarks}
+                        onChange={(e) =>
+                          handlePricingChange("pl4", "remarks", e.target.value)
+                        }
+                        className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white bg-white dark:bg-slate-700"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* Actions */}
@@ -510,266 +807,55 @@ export default function EditProductPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
+                className="flex-1 px-4 py-2 bg-blue-600 dark:bg-blue-700 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 transition disabled:opacity-50"
               >
                 {loading ? "Saving..." : "Save Changes"}
               </button>
               <button
                 type="button"
                 onClick={() => setShowDeleteConfirm(true)}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
+                className="px-4 py-2 bg-red-600 dark:bg-red-700 text-white rounded-lg hover:bg-red-700 dark:hover:bg-red-600 transition"
               >
                 Delete Product
               </button>
               <Link
                 href="/admin/products"
-                className="flex-1 px-4 py-2 border border-gray-300 text-gray-900 rounded-lg hover:bg-gray-50 transition text-center"
+                className="flex-1 px-4 py-2 border border-gray-300 dark:border-slate-600 text-gray-900 dark:text-white rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700 transition text-center"
               >
                 Cancel
               </Link>
             </div>
           </form>
 
-          {/* Variants Section */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-semibold text-gray-900">Variants</h2>
-              <button
-                onClick={() => setShowAddVariant(!showAddVariant)}
-                className="px-3 py-1 bg-green-600 text-white rounded-lg hover:bg-green-700 transition text-sm"
-              >
-                {showAddVariant ? "Cancel" : "+ Add Variant"}
-              </button>
-            </div>
-
-            {/* Add Variant Form */}
-            {showAddVariant && (
-              <form
-                onSubmit={handleAddVariant}
-                className="mb-6 p-4 bg-gray-50 rounded-lg"
-              >
-                <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">
-                      Pack Size *
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      name="packSize"
-                      value={variantForm.packSize}
-                      onChange={handleVariantInputChange}
-                      className="w-full px-2 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white text-sm"
-                      placeholder="e.g., 500"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">
-                      Unit *
-                    </label>
-                    <select
-                      name="unit"
-                      value={variantForm.unit}
-                      onChange={handleVariantInputChange}
-                      className="w-full px-2 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white text-sm"
-                    >
-                      <option value="KG">KG</option>
-                      <option value="L">L</option>
-                      <option value="G">G</option>
-                      <option value="ML">ML</option>
-                      <option value="PIECE">PIECE</option>
-                      <option value="DOZEN">DOZEN</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">
-                      Purchase Cost *
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      name="purchaseCost"
-                      value={variantForm.purchaseCost}
-                      onChange={handleVariantInputChange}
-                      className="w-full px-2 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white text-sm"
-                      placeholder="0.00"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">
-                      B2B Price *
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      name="b2bPrice"
-                      value={variantForm.b2bPrice}
-                      onChange={handleVariantInputChange}
-                      className="w-full px-2 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white text-sm"
-                      placeholder="0.00"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">
-                      B2C Price *
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      name="b2cPrice"
-                      value={variantForm.b2cPrice}
-                      onChange={handleVariantInputChange}
-                      className="w-full px-2 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white text-sm"
-                      placeholder="0.00"
-                      required
-                    />
-                  </div>
+          {/* Delete Confirmation */}
+          {showDeleteConfirm && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+              <div className="bg-white dark:bg-slate-800 rounded-lg shadow-lg p-6 max-w-sm">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                  Delete Product?
+                </h3>
+                <p className="text-gray-600 dark:text-gray-400 mb-6">
+                  This action cannot be undone. The product will be permanently
+                  deleted.
+                </p>
+                <div className="flex gap-3">
+                  <button
+                    onClick={handleDeleteProduct}
+                    className="flex-1 px-4 py-2 bg-red-600 dark:bg-red-700 text-white rounded-lg hover:bg-red-700 dark:hover:bg-red-600 transition"
+                  >
+                    Delete
+                  </button>
+                  <button
+                    onClick={() => setShowDeleteConfirm(false)}
+                    className="flex-1 px-4 py-2 border border-gray-300 dark:border-slate-600 text-gray-900 dark:text-white rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700 transition"
+                  >
+                    Cancel
+                  </button>
                 </div>
-                <button
-                  type="submit"
-                  className="mt-3 w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
-                >
-                  Add Variant
-                </button>
-              </form>
-            )}
-
-            {/* Variants Table */}
-            {variants.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-gray-300">
-                      <th className="text-left py-2 px-2 font-semibold text-gray-900">
-                        Pack Size
-                      </th>
-                      <th className="text-left py-2 px-2 font-semibold text-gray-900">
-                        Unit
-                      </th>
-                      <th className="text-right py-2 px-2 font-semibold text-gray-900">
-                        Purchase Cost
-                      </th>
-                      <th className="text-right py-2 px-2 font-semibold text-gray-900">
-                        B2B Price
-                      </th>
-                      <th className="text-right py-2 px-2 font-semibold text-gray-900">
-                        B2C Price
-                      </th>
-                      <th className="text-center py-2 px-2 font-semibold text-gray-900">
-                        Status
-                      </th>
-                      <th className="text-center py-2 px-2 font-semibold text-gray-900">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {variants.map((variant) => (
-                      <tr
-                        key={variant._id}
-                        className="border-b border-gray-200 hover:bg-gray-50"
-                      >
-                        <td className="py-2 px-2 text-gray-900">
-                          {variant.packSize}
-                        </td>
-                        <td className="py-2 px-2 text-gray-900">
-                          {variant.unit}
-                        </td>
-                        <td className="py-2 px-2 text-right text-gray-900">
-                          ₹{variant.purchaseCost.toFixed(2)}
-                        </td>
-                        <td className="py-2 px-2 text-right text-gray-900">
-                          ₹{variant.b2bPrice.toFixed(2)}
-                        </td>
-                        <td className="py-2 px-2 text-right text-gray-900">
-                          ₹{variant.b2cPrice.toFixed(2)}
-                        </td>
-                        <td className="py-2 px-2 text-center">
-                          <span
-                            className={`px-2 py-1 rounded text-white text-xs font-medium ${
-                              variant.isActive ? "bg-green-600" : "bg-gray-400"
-                            }`}
-                          >
-                            {variant.isActive ? "Active" : "Inactive"}
-                          </span>
-                        </td>
-                        <td className="py-2 px-2 text-center">
-                          <div className="flex gap-1 justify-center flex-wrap">
-                            <Link
-                              href={`/admin/products/${productId}/variants/${variant._id}/prices`}
-                              className="px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700 transition"
-                            >
-                              Pricing
-                            </Link>
-                            <Link
-                              href={`/admin/products/${productId}/variants/${variant._id}/history`}
-                              className="px-2 py-1 bg-purple-600 text-white rounded text-xs hover:bg-purple-700 transition"
-                            >
-                              History
-                            </Link>
-                            <button
-                              onClick={() =>
-                                handleToggleVariantStatus(variant._id)
-                              }
-                              className={`px-2 py-1 rounded text-xs text-white transition ${
-                                variant.isActive
-                                  ? "bg-red-600 hover:bg-red-700"
-                                  : "bg-green-600 hover:bg-green-700"
-                              }`}
-                            >
-                              {variant.isActive ? "Deactivate" : "Activate"}
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <p className="text-center py-4 text-gray-600">
-                No variants yet. Add one using the button above.
-              </p>
-            )}
-          </div>
-        </div>
-
-        {/* Delete Confirmation Modal */}
-        {showDeleteConfirm && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-lg shadow-lg p-6 max-w-sm">
-              <h3 className="text-lg font-semibold text-red-600 mb-2">
-                Delete Product Permanently?
-              </h3>
-              <p className="text-gray-700 mb-4">
-                Delete this product permanently? This will permanently remove
-                the product, its variants, and their price history. This action
-                cannot be undone.
-              </p>
-              <div className="flex gap-3">
-                <button
-                  onClick={handleDeleteProduct}
-                  className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition font-semibold"
-                >
-                  Delete Permanently
-                </button>
-                <button
-                  onClick={() => setShowDeleteConfirm(false)}
-                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-900 rounded-lg hover:bg-gray-50 transition"
-                >
-                  Cancel
-                </button>
               </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );

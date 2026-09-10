@@ -215,7 +215,7 @@ export default function Navigation() {
                     : ""}
               </p>
             </div>
-            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+            <div className="w-8 h-8 bg-linear-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
               <span className="text-white text-xs font-bold">
                 {user?.name?.charAt(0).toUpperCase() || "U"}
               </span>

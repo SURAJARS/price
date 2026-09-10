@@ -62,9 +62,12 @@ export const createProduct = asyncHandler(
       categoryId,
       subcategoryId,
       sku,
+      giftCode,
       brand,
       description,
       image,
+      purchasePrice,
+      pricing,
     } = req.body;
 
     if (!englishName || !categoryId) {
@@ -76,15 +79,27 @@ export const createProduct = asyncHandler(
       return;
     }
 
+    if (purchasePrice === undefined || !pricing) {
+      res
+        .status(400)
+        .json(
+          successResponse(false, "Purchase price and pricing configuration are required")
+        );
+      return;
+    }
+
     const product = await ProductService.createProduct({
       englishName,
       tamilName,
       categoryId,
       subcategoryId,
       sku,
+      giftCode,
       brand,
       description,
       image,
+      purchasePrice,
+      pricing,
     });
 
     res.status(201).json(
@@ -118,9 +133,12 @@ export const updateProduct = asyncHandler(
       categoryId,
       subcategoryId,
       sku,
+      giftCode,
       brand,
       description,
       image,
+      purchasePrice,
+      pricing,
     } = req.body;
 
     const product = await ProductService.updateProduct(productId, {
@@ -129,9 +147,12 @@ export const updateProduct = asyncHandler(
       categoryId,
       subcategoryId,
       sku,
+      giftCode,
       brand,
       description,
       image,
+      purchasePrice,
+      pricing,
     });
 
     res.json(successResponse(true, "Product updated successfully", product));
@@ -157,129 +178,18 @@ export const toggleProductStatus = asyncHandler(
   }
 );
 
-// Variant management
-
-// Get product variants
-export const getProductVariants = asyncHandler(
+// Delete product
+export const deleteProduct = asyncHandler(
   async (req: Request, res: Response) => {
     const productId = Array.isArray(req.params.id)
       ? req.params.id[0]
       : req.params.id;
 
-    const variants = await ProductService.getProductVariants(productId);
+    await ProductService.deleteProduct(productId);
 
     res.json(
-      successResponse(true, `Retrieved ${variants.length} variant(s)`, variants)
+      successResponse(true, "Product deleted successfully")
     );
-  }
-);
-
-// Create variant
-export const createVariant = asyncHandler(
-  async (req: Request, res: Response) => {
-    const productId = Array.isArray(req.params.id)
-      ? req.params.id[0]
-      : req.params.id;
-    const { packSize, unit, purchaseCost, b2bPrice, b2cPrice } = req.body;
-
-    if (!packSize || !unit || purchaseCost === undefined || b2bPrice === undefined || b2cPrice === undefined) {
-      res
-        .status(400)
-        .json(
-          successResponse(
-            false,
-            "Pack size, unit, and prices are required"
-          )
-        );
-      return;
-    }
-
-    const variant = await ProductService.createVariant(productId, {
-      packSize,
-      unit,
-      purchaseCost,
-      b2bPrice,
-      b2cPrice,
-    });
-
-    res.status(201).json(
-      successResponse(true, "Variant created successfully", variant)
-    );
-  }
-);
-
-// Update variant
-export const updateVariant = asyncHandler(
-  async (req: Request, res: Response) => {
-    const variantId = Array.isArray(req.params.variantId)
-      ? req.params.variantId[0]
-      : req.params.variantId;
-    const { packSize, unit, purchaseCost, b2bPrice, b2cPrice } = req.body;
-
-    const variant = await ProductService.updateVariant(variantId, {
-      packSize,
-      unit,
-      purchaseCost,
-      b2bPrice,
-      b2cPrice,
-    });
-
-    res.json(successResponse(true, "Variant updated successfully", variant));
-  }
-);
-
-// Toggle variant active status
-export const toggleVariantStatus = asyncHandler(
-  async (req: Request, res: Response) => {
-    const variantId = Array.isArray(req.params.variantId)
-      ? req.params.variantId[0]
-      : req.params.variantId;
-
-    const variant = await ProductService.toggleVariantStatus(variantId);
-
-    res.json(
-      successResponse(
-        true,
-        `Variant ${variant.isActive ? "activated" : "deactivated"}`,
-        variant
-      )
-    );
-  }
-);
-
-// Update variant prices (with price history)
-export const updateVariantPrices = asyncHandler(
-  async (req: Request, res: Response) => {
-    const variantId = Array.isArray(req.params.variantId)
-      ? req.params.variantId[0]
-      : req.params.variantId;
-    const { purchaseCost, b2bPrice, b2cPrice } = req.body;
-    const authReq = req as AuthRequest;
-
-    const variant = await ProductService.updateVariantPrices(
-      variantId,
-      authReq.userId || "",
-      { purchaseCost, b2bPrice, b2cPrice }
-    );
-
-    res.json(successResponse(true, "Prices updated successfully", variant));
-  }
-);
-
-// Get price history
-export const getPriceHistory = asyncHandler(
-  async (req: Request, res: Response) => {
-    const variantId = Array.isArray(req.params.variantId)
-      ? req.params.variantId[0]
-      : req.params.variantId;
-    const { limit = 20 } = req.query;
-
-    const history = await ProductService.getPriceHistory(
-      variantId,
-      parseInt(limit as string)
-    );
-
-    res.json(successResponse(true, "Price history retrieved", history));
   }
 );
 
@@ -327,20 +237,5 @@ export const uploadProductImage = asyncHandler(
       });
       res.status(500).json(successResponse(false, error.message || "Failed to upload image"));
     }
-  }
-);
-
-// Delete product permanently (cascade delete variants and price history)
-export const deleteProduct = asyncHandler(
-  async (req: Request, res: Response) => {
-    const productId = Array.isArray(req.params.id)
-      ? req.params.id[0]
-      : req.params.id;
-
-    await ProductService.deleteProduct(productId);
-
-    res.json(
-      successResponse(true, "Product deleted permanently", { productId })
-    );
   }
 );

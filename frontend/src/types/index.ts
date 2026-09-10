@@ -11,19 +11,24 @@ export interface User {
   isActive: boolean;
 }
 
-export interface ProductVariant {
-  _id: string;
-  productId: string;
-  packSize: number;
-  unit: string;
-  b2bPrice: number;
-  b2cPrice: number;
-  purchaseCost?: number; // Only visible to admin
-  isActive: boolean;
-  createdAt?: string;
-  updatedAt?: string;
+// Price level interface
+export interface PriceLevel {
+  price: number;
+  adjustment?: number;
+  remarks?: string;
 }
 
+// Product pricing interface
+export interface ProductPricing {
+  fixed: boolean;
+  calculationType: "percentage" | "value";
+  pl1: PriceLevel;
+  pl2: PriceLevel;
+  pl3: PriceLevel;
+  pl4: PriceLevel;
+}
+
+// Product interface (new structure without variants)
 export interface Product {
   _id: string;
   englishName: string;
@@ -37,9 +42,26 @@ export interface Product {
     name: string;
   };
   sku?: string;
+  giftCode?: string;
   brand?: string;
+  description?: string;
   image?: string;
-  variants: ProductVariant[];
+  purchasePrice: number;
+  pricing: ProductPricing;
+  isActive: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+// Product variant (for backward compatibility)
+export interface ProductVariant {
+  _id: string;
+  productId: string;
+  packSize: number;
+  unit: string;
+  b2bPrice: number;
+  b2cPrice: number;
+  purchaseCost?: number; // Only visible to admin
   isActive: boolean;
   createdAt?: string;
   updatedAt?: string;
