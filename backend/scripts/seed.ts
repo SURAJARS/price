@@ -4,8 +4,9 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-// Import User model
+// Import User model and types
 import { User } from "../src/models/User";
+import { UserRole } from "../src/types";
 
 const seedDatabase = async () => {
   try {
@@ -28,14 +29,14 @@ const seedDatabase = async () => {
         email: "staff@example.com",
         password: staffPasswordHash,
         name: "Staff User",
-        role: "STAFF",
+        role: UserRole.STAFF,
         isActive: true,
       },
       {
         email: "admin@example.com",
         password: adminPasswordHash,
         name: "Admin User",
-        role: "OWNER",
+        role: UserRole.OWNER,
         isActive: true,
       },
     ];
@@ -46,13 +47,15 @@ const seedDatabase = async () => {
         // If users already exist, just log it
         if (error.code === 11000) {
           console.log("⚠ Some users already exist, skipping duplicates");
-          return;
+          return [];
         }
         throw error;
       }
     );
 
-    console.log("✓ Seed database completed successfully!");
+    if (result && result.length > 0) {
+      console.log(`✓ Created ${result.length} users`);
+    }
     console.log("\nDemo credentials created:");
     console.log("  Staff User: staff@example.com / password123");
     console.log("  Admin User: admin@example.com / admin123");
