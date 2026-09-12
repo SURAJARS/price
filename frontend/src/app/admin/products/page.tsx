@@ -97,8 +97,9 @@ export default function ProductsPage() {
         20,
         isActive,
       );
+      const filteredProducts = response.data?.data || [];
 
-      setProducts(response.data?.data || []);
+      setProducts(filteredProducts);
     } catch (err: any) {
       setError(
         err.response?.data?.message || t("products.failedToLoad", language),
@@ -255,7 +256,19 @@ export default function ProductsPage() {
                     </th>
 
                     <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900 dark:text-white">
-                      PL1 – B2C Retail
+                      PL1 – Retail
+                    </th>
+
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900 dark:text-white">
+                      PL2 – Bulk
+                    </th>
+
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900 dark:text-white">
+                      PL3 – B2B
+                    </th>
+
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900 dark:text-white">
+                      PL4 – Wholesale
                     </th>
 
                     <th className="px-4 py-3 text-center text-sm font-semibold text-gray-900 dark:text-white">
@@ -272,7 +285,7 @@ export default function ProductsPage() {
                   {products.length === 0 ? (
                     <tr>
                       <td
-                        colSpan={6}
+                        colSpan={9}
                         className="px-4 py-8 text-center text-gray-500 dark:text-gray-400"
                       >
                         {t("products.noProducts", language)}
@@ -312,6 +325,21 @@ export default function ProductsPage() {
                         {/* PL1 Price */}
                         <td className="px-4 py-3 text-gray-900 dark:text-white">
                           ₹{product.pricing?.pl1?.price?.toFixed(2) || "-"}
+                        </td>
+
+                        {/* PL2 Price */}
+                        <td className="px-4 py-3 text-gray-900 dark:text-white">
+                          ₹{product.pricing?.pl2?.price?.toFixed(2) || "-"}
+                        </td>
+
+                        {/* PL3 Price */}
+                        <td className="px-4 py-3 text-gray-900 dark:text-white">
+                          ₹{product.pricing?.pl3?.price?.toFixed(2) || "-"}
+                        </td>
+
+                        {/* PL4 Price */}
+                        <td className="px-4 py-3 text-gray-900 dark:text-white">
+                          ₹{product.pricing?.pl4?.price?.toFixed(2) || "-"}
                         </td>
 
                         {/* Status */}

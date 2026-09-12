@@ -354,18 +354,23 @@ export default function StaffSearchPage() {
                       key={index}
                       className={`p-4 border rounded-xl ${levelColors[index]}`}
                     >
-                      <p className="text-sm mb-2">
+                      <p className="text-sm mb-2 font-semibold">
                         {language === "ta"
                           ? `விலை நிலை ${index + 1}`
                           : levelNames[index]}
                       </p>
-                      <p className="text-2xl font-bold">
+                      <p className="text-2xl font-bold mb-3">
                         {formatPrice(level.price)}
                       </p>
                       {level.remarks && (
-                        <p className="text-xs text-gray-600 dark:text-gray-400 mt-2">
-                          {level.remarks}
-                        </p>
+                        <div className="pt-2 border-t border-gray-300 dark:border-gray-600">
+                          <p className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            {language === "ta" ? "குறிப்பு:" : "Remarks:"}
+                          </p>
+                          <p className="text-xs text-gray-700 dark:text-gray-200 italic">
+                            {level.remarks}
+                          </p>
+                        </div>
                       )}
                     </div>
                   ))}

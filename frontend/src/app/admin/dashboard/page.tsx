@@ -7,12 +7,16 @@ import Navigation from "@/components/Navigation";
 import Link from "next/link";
 import { useLanguageStore } from "@/stores/languageStore";
 import { t } from "@/lib/translations";
+import { apiClient } from "@/services/apiClient";
 export default function AdminDashboardPage() {
   const router = useRouter();
   const { user, isAuthenticated } = useAuthStore();
   const { language } = useLanguageStore();
 
   const [mounted, setMounted] = useState(false);
+  const [totalProducts, setTotalProducts] = useState(0);
+  const [activeProducts, setActiveProducts] = useState(0);
+  const [loading, setLoading] = useState(true);
   // Redirect if not authenticated or not owner
   useEffect(() => {
     setMounted(true);
@@ -28,6 +32,27 @@ export default function AdminDashboardPage() {
       router.push("/staff/search");
     }
   }, [isAuthenticated, user, router]);
+
+  // Load product stats
+  useEffect(() => {
+    const loadStats = async () => {
+      try {
+        const response = await apiClient.getAllProducts("", undefined, 1, 100);
+        const allProducts = response.data?.data || [];
+
+        setTotalProducts(allProducts.length);
+        setActiveProducts(allProducts.filter((p: any) => p.isActive).length);
+      } catch (err) {
+        console.error("Failed to load stats:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (mounted && isAuthenticated && user?.role === "admin") {
+      loadStats();
+    }
+  }, [mounted, isAuthenticated, user]);
 
   if (!mounted) {
     return null;
@@ -100,10 +125,12 @@ export default function AdminDashboardPage() {
               {t("dashboard.totalProducts", language)}
             </p>
             <p className="text-4xl font-bold text-gray-900 dark:text-white mt-2">
-              0
+              {loading ? "-" : totalProducts}
             </p>
             <p className="text-xs text-gray-500 dark:text-gray-500 mt-2">
-              {t("dashboard.comingSoon", language)}
+              {loading
+                ? t("dashboard.loading", language)
+                : t("dashboard.products", language)}
             </p>
           </div>
           <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-6 border-l-4 border-green-500">
@@ -111,10 +138,12 @@ export default function AdminDashboardPage() {
               {t("dashboard.activeVariants", language)}
             </p>
             <p className="text-4xl font-bold text-gray-900 dark:text-white mt-2">
-              0
+              {loading ? "-" : activeProducts}
             </p>
             <p className="text-xs text-gray-500 dark:text-gray-500 mt-2">
-              {t("dashboard.comingSoon", language)}
+              {loading
+                ? t("dashboard.loading", language)
+                : t("dashboard.active", language)}
             </p>
           </div>
           <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-6 border-l-4 border-purple-500">
