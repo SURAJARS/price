@@ -109,14 +109,6 @@ export default function LoginPage() {
               {isLoading ? "Signing in..." : "Sign in"}
             </button>
           </div>
-
-          <p className="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">
-            Demo credentials:
-            <br />
-            Email: staff@example.com | Password: password123
-            <br />
-            Email: admin@example.com | Password: admin123
-          </p>
         </form>
       </div>
     </div>
